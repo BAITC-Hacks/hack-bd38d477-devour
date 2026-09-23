@@ -8,8 +8,10 @@ AI-симулятор управления городом. Пользовате�
 
 ## Структура и владельцы (трогать ТОЛЬКО свои файлы)
 - Агент 1 (движок): `engine/` (`__init__.py`, `data.json`, `rules.py`, `scoring.py`, `optimizer.py`), `tests/` (`test_engine.py`, `test_api.py`), `README.md`, `run.sh`, `Dockerfile`, `.dockerignore`, `.github/`
-- Агент 2 (API и AI): `api/`, `ai/`, `requirements.txt`, `.env.example`, `.gitignore`
+- Агент 2 (API и AI): `api/`, `ai/`, `requirements.txt`, `.env.example`, `.gitignore`, `web-v2/map.js`, `web-v2/agent.js`
 - Агент 3 (фронтенд): `web/` (`index.html`, `app.js`, `styles.css`)
+- Третья участница: `web-v2/` (`index.html`, `styles.css`)
+- Общий файл: `web-v2/DESIGN.md`; не менять без согласования.
   Нужно изменить чужой файл — остановись и напиши пользователю, что и зачем, в чужой файл не пиши.
 
 ## Данные (переносятся в engine/data.json без изменений)
