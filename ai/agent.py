@@ -3,8 +3,8 @@ import os
 
 from openai import OpenAI
 
-from engine import load_data, validate, simulate, optimize
-from ai.explainer import fallback_analysis, normalize_text_numbers
+from engine import load_data, validate, simulate, optimize, get_event
+from ai.explainer import fallback_analysis, normalize_text_numbers, numbers_supported
 
 SYSTEM_PROMPT = "Ты аким города. Цель пользователя: {goal}. Предложи набор мер, проверяй каждый набор инструментами validate_plan и simulate_plan, затем улучшай решение. Числа бери только из результатов инструментов. Пиши по-русски, каждое число в объяснении оформляй десятичной запятой и ровно двумя знаками после запятой, для показателей используй русские названия. Когда готов, верни строго JSON: объект с decisions (список объектов measure_id и district) и explanation (строка)."
 TOOL_LIMIT = 8
@@ -156,7 +156,9 @@ def _finish(result, event_id, goal, candidates=None):
 def _tool_result(name, arguments, event_id, steps, valid_plans):
     if name == "list_measures":
         data = load_data()
-        return {"budget": data.get("budget", 100), "measures": data.get("measures", []), "districts": data.get("districts", []), "indicators": data.get("indicators", [])}
+        event = get_event(event_id) if event_id is not None else None
+        budget = data.get("budget", 100) - (event["budget_penalty"] if event else 0)
+        return {"budget": budget, "event": event, "measures": data.get("measures", []), "districts": data.get("districts", []), "indicators": data.get("indicators", [])}
     decisions = arguments.get("decisions", [])
     validation = validate(decisions, event_id=event_id)
     steps.append(_step("validate", decisions, _validation_summary(validation)))
@@ -196,17 +198,21 @@ def run_agent(goal=None, event_id=None):
         valid_plans = []
         tool_calls_count = 0
         final = None
+        final_content = None
+        tool_results = []
         while True:
             if tool_calls_count >= TOOL_LIMIT:
                 messages.append({"role": "user", "content": "Лимит инструментов исчерпан. Выбери лучший валидный план среди уже проверенных и верни итоговый JSON без новых инструментов."})
                 response = client.chat.completions.create(model=os.environ.get("OPENAI_MODEL", "gpt-6-sol"), messages=messages, reasoning_effort="none")
-                final = _parse_final(response.choices[0].message.content)
+                final_content = response.choices[0].message.content
+                final = _parse_final(final_content)
                 break
             response = client.chat.completions.create(model=os.environ.get("OPENAI_MODEL", "gpt-6-sol"), messages=messages, tools=TOOLS, tool_choice="auto", reasoning_effort="none")
             message = response.choices[0].message
             calls = message.tool_calls or []
             if not calls:
-                final = _parse_final(message.content)
+                final_content = message.content
+                final = _parse_final(final_content)
                 break
             messages.append(message.model_dump(exclude_none=True))
             for call in calls:
@@ -220,7 +226,16 @@ def run_agent(goal=None, event_id=None):
                 except json.JSONDecodeError:
                     arguments = {}
                 result = _tool_result(call.function.name, arguments, event_id, steps, valid_plans)
-                messages.append({"role": "tool", "tool_call_id": call.id, "content": json.dumps(round_floats(result), ensure_ascii=False)})
+                tool_result = round_floats(result)
+                tool_results.append(tool_result)
+                messages.append({"role": "tool", "tool_call_id": call.id, "content": json.dumps(tool_result, ensure_ascii=False)})
+        if final is not None and not numbers_supported(final["explanation"], tool_results):
+            messages.append({"role": "assistant", "content": final_content})
+            messages.append({"role": "user", "content": "В объяснении есть числа, которых нет в результатах инструментов. Исправь ответ один раз: верни JSON с decisions и explanation, используй только числа из результатов инструментов, без собственных вычислений. Неподтверждённые числа убери. Новые инструменты не вызывай."})
+            response = client.chat.completions.create(model=os.environ.get("OPENAI_MODEL", "gpt-6-sol"), messages=messages, reasoning_effort="none")
+            final = _parse_final(response.choices[0].message.content)
+            if final is not None and not numbers_supported(final["explanation"], tool_results):
+                final = None
         if final is None:
             candidates = optimize(top=1, event_id=event_id)
             return _finish(_fallback(event_id, steps, candidates), event_id, goal, candidates)
