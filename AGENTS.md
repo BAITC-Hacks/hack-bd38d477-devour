@@ -107,9 +107,10 @@ contributions.delta_score = Score(все меры) − Score(все меры б�
 `event_id` везде необязателен: без него поведение и числа прежние. При событии `validate` возвращает уменьшенный `budget`, а текст ошибки о перерасходе называет событие; `simulate` считает `base_score` и `score` с учётом события и добавляет поле `"event"` (объект события или `null`), в `districts[].before` уже учтено событие; `optimize` ищет наборы в уменьшенном бюджете.
 
 AI-аким:
-- `POST /api/agent` принимает `{"goal": str | null, "event_id": str | null}` и возвращает `{"decisions": [...], "simulation": {...}, "steps": [{"action": "validate" | "simulate", "decisions": [...], "summary": str}], "explanation": str, "source": "ai" | "fallback"}`.
-- Агент использует OpenAI function calling с инструментами `list_measures`, `validate_plan(decisions)` и `simulate_plan(decisions)`; инструменты проверки и симуляции передают текущий `event_id` движку.
+- `POST /api/agent` принимает `{"goal": str | null, "event_id": str | null}` и возвращает `{"decisions": [...], "simulation": {...}, "steps": [{"action": "validate" | "simulate", "decisions": [...], "summary": str}], "explanation": str, "optimizer_score": float | null, "source": "ai" | "fallback"}`.
+- Агент использует OpenAI function calling с инструментами `list_measures`, `validate_plan(decisions)` и `simulate_plan(decisions)`; инструменты проверки и симуляции передают текущий `event_id` движку. `list_measures` возвращает фактический доступный `budget` и `event` (объект события или `null`).
 - За один запуск допускается не более 8 вызовов инструментов. Итоговый набор всегда повторно проверяется через `validate` и `simulate`; если он невалиден, возвращается лучший валидный набор из проверенных.
+- Числа в объяснении AI сверяются с результатами инструментов; при неподтверждённых числах выполняется одна попытка исправления, затем fallback.
 - Без `OPENAI_API_KEY` или при ошибке AI возвращается лучший набор из `optimize(top=1, event_id)` с шаблонным объяснением, `source` равен `"fallback"`.
 - Неизвестный `event_id` возвращает HTTP 422 с русским сообщением.
 
@@ -122,9 +123,11 @@ API (Агент 2) — новое:
 API (Агент 2):
 - `GET /api/state` → бюджет, районы с базовыми оценками, меры, веса, base_score
 - `POST /api/validate` `{"decisions": [...]}` → результат validate
-- `POST /api/simulate` `{"decisions": [...]}` → результат simulate; невалидно → 422 `{"valid": false, "errors": [...]}`
-- `POST /api/explain` `{"decisions": [...]}` → `{"simulation": {...}, "analysis": {"summary": str, "strengths": [str], "risks": [str], "consequences": [str], "tradeoffs": [str], "recommendations": [str]}, "source": "ai" | "fallback"}`
+- `POST /api/simulate` `{"decisions": [...]}` → результат simulate; невалидно → 422 `{"detail": {"valid": false, "errors": [...]}}`
+- `POST /api/explain` `{"decisions": [...]}` → `{"simulation": {...}, "analysis": {"summary": str, "strengths": [str], "risks": [str], "consequences": [str], "tradeoffs": [str], "recommendations": [{"text": str, "replace": {"from": {"measure_id": str, "district": str | null}, "to": {"measure_id": str, "district": str | null}}, "score": float, "delta_score": float}]}, "source": "ai" | "fallback"}`
 - `POST /api/compare` `{"scenarios": [{"name": str, "decisions": [...]}]}` → `{"results": [...], "analysis": str, "source": "ai" | "fallback"}`
+- Невалидный набор в `/api/explain` возвращает 422 `{"detail": {"valid": false, "errors": [...]}}`; в `/api/compare` внутри `detail` дополнительно передаётся `"scenario": str`. `/api/validate` возвращает результат проверки с HTTP 200, включая невалидные наборы.
+- `analysis.recommendations` формируется движком подбора замен после AI-анализа; `score` — Score после замены, `delta_score` — прирост относительно текущего плана.
 - `GET /api/optimize?top=5` → результат optimize
 - `/` отдаёт `web/index.html`, статика из `web/`
 
