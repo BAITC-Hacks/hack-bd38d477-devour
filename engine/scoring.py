@@ -1,5 +1,11 @@
 from engine.events import event_penalty, resolve_event
-from engine.rules import district_names, load_data, measures_index
+from engine.rules import (
+    decision_measure_id,
+    district_names,
+    load_data,
+    measures_index,
+    sanitize_decisions,
+)
 
 
 def indicator_ids(data):
@@ -19,7 +25,7 @@ def _base_values(data):
 
 def _synergy_district(measures, decisions, measure_id):
     for item in decisions:
-        if item.get("measure_id") == measure_id:
+        if decision_measure_id(item) == measure_id:
             if measures[measure_id]["type"] == "C":
                 return None
             return item.get("district")
@@ -41,18 +47,18 @@ def _apply(data, decisions, event=None):
                 values[target][indicator] += shift
 
     for item in decisions:
-        measure = measures.get(item.get("measure_id"))
+        measure = measures.get(decision_measure_id(item))
         if measure is None:
             continue
         factor = (horizon - measure["lag"]) / horizon
         targets = names if measure["type"] == "C" else [item.get("district")]
         for target in targets:
-            if target not in values:
+            if not isinstance(target, str) or target not in values:
                 continue
             for indicator, effect in measure["effects"].items():
                 values[target][indicator] += effect * factor
 
-    chosen = {item.get("measure_id") for item in decisions}
+    chosen = {decision_measure_id(item) for item in decisions}
     active = []
     for synergy in data["synergies"]:
         first, second = synergy["pair"]
@@ -63,7 +69,7 @@ def _apply(data, decisions, event=None):
         district = _synergy_district(measures, decisions, first)
         targets = names if district is None else [district]
         for target in targets:
-            if target not in values:
+            if not isinstance(target, str) or target not in values:
                 continue
             values[target][synergy["indicator"]] += synergy["bonus"]
             active.append(
@@ -109,7 +115,7 @@ def _score_only(data, decisions, event=None):
 
 def simulate(decisions, event_id=None):
     data = load_data()
-    decisions = list(decisions or [])
+    decisions = sanitize_decisions(decisions)
     measures = measures_index(data)
     event = resolve_event(event_id)
     budget = data["budget"] - event_penalty(event)
@@ -121,14 +127,14 @@ def simulate(decisions, event_id=None):
     score, d_avg, district_scores, critical = _evaluate(data, values)
 
     total_cost = sum(
-        measures[item["measure_id"]]["cost"]
+        measures[decision_measure_id(item)]["cost"]
         for item in decisions
-        if item.get("measure_id") in measures
+        if decision_measure_id(item) in measures
     )
 
     contributions = []
     for index, item in enumerate(decisions):
-        measure = measures.get(item.get("measure_id"))
+        measure = measures.get(decision_measure_id(item))
         if measure is None:
             continue
         rest = decisions[:index] + decisions[index + 1:]

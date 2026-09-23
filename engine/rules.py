@@ -3,7 +3,7 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-from engine.events import event_penalty, resolve_event
+from engine.events import event_penalty, get_event
 
 DATA_PATH = Path(__file__).with_name("data.json")
 
@@ -30,27 +30,49 @@ def direction_names(data):
     return {item["id"]: item["name"] for item in data["directions"]}
 
 
+def sanitize_decisions(decisions):
+    if not isinstance(decisions, list):
+        return []
+    return [item for item in decisions if isinstance(item, dict)]
+
+
+def decision_measure_id(item):
+    value = item.get("measure_id")
+    return value if isinstance(value, str) else None
+
+
+def resolve_event_safely(event_id):
+    if event_id is None:
+        return None, []
+    if not isinstance(event_id, str):
+        return None, ["Идентификатор события должен быть строкой или null"]
+    try:
+        return get_event(event_id), []
+    except ValueError as error:
+        return None, [str(error)]
+
+
 def validate(decisions, event_id=None):
     data = load_data()
-    event = resolve_event(event_id)
-    penalty = event_penalty(event)
-    budget = data["budget"] - penalty
     required = data["measures_required"]
     limit = data["max_per_direction"]
     measures = measures_index(data)
     districts = district_names(data)
     directions = direction_names(data)
 
+    event, errors = resolve_event_safely(event_id)
+    budget = data["budget"] - event_penalty(event)
+
     if not isinstance(decisions, list):
+        errors.append("Решения должны быть списком объектов")
         return {
             "valid": False,
-            "errors": ["Решения должны быть списком объектов"],
+            "errors": errors,
             "total_cost": 0,
             "budget": budget,
             "budget_left": budget,
         }
 
-    errors = []
     parsed = []
     total_cost = 0
 
@@ -60,13 +82,20 @@ def validate(decisions, event_id=None):
                 f"Решение №{position}: ожидается объект с полями measure_id и district"
             )
             continue
-        measure_id = item.get("measure_id")
-        district = item.get("district")
-        if measure_id not in measures:
-            errors.append(f"Решение №{position}: неизвестное мероприятие «{measure_id}»")
+        raw_id = item.get("measure_id")
+        if raw_id is None:
+            errors.append(f"Решение №{position}: не указано поле measure_id")
             continue
-        parsed.append((measure_id, district))
-        total_cost += measures[measure_id]["cost"]
+        if not isinstance(raw_id, str):
+            errors.append(
+                f"Решение №{position}: measure_id должен быть строкой, получено значение типа {type(raw_id).__name__}"
+            )
+            continue
+        if raw_id not in measures:
+            errors.append(f"Решение №{position}: неизвестное мероприятие «{raw_id}»")
+            continue
+        parsed.append((raw_id, item.get("district")))
+        total_cost += measures[raw_id]["cost"]
 
     if total_cost > budget:
         if event is None:
@@ -76,7 +105,7 @@ def validate(decisions, event_id=None):
         else:
             errors.append(
                 f"Стоимость набора {total_cost} превышает бюджет {budget} на {total_cost - budget}: "
-                f"из-за события «{event['name']}» на ликвидацию ушло {penalty} из {data['budget']}"
+                f"из-за события «{event['name']}» на ликвидацию ушло {event['budget_penalty']} из {data['budget']}"
             )
 
     if len(decisions) != required:
@@ -97,6 +126,15 @@ def validate(decisions, event_id=None):
             if district is None:
                 errors.append(
                     f"Для районного мероприятия «{measure_id}» нужно указать район"
+                )
+            elif not isinstance(district, str):
+                errors.append(
+                    f"Мероприятие «{measure_id}»: название района должно быть строкой, "
+                    f"получено значение типа {type(district).__name__}"
+                )
+            elif not district.strip():
+                errors.append(
+                    f"Мероприятие «{measure_id}»: название района не может быть пустым"
                 )
             elif district not in districts:
                 errors.append(
@@ -128,8 +166,14 @@ def validate(decisions, event_id=None):
         if rule["scope"] == "any":
             errors.append(f"Мероприятия «{first}» и «{second}» несовместимы")
         else:
-            clash = sorted({d for d in first_districts if d in second_districts and d is not None})
-            for district in clash:
+            shared = sorted(
+                {
+                    d
+                    for d in first_districts
+                    if isinstance(d, str) and d in second_districts
+                }
+            )
+            for district in shared:
                 errors.append(
                     f"Мероприятия «{first}» и «{second}» нельзя выбрать в одном районе «{district}»"
                 )
