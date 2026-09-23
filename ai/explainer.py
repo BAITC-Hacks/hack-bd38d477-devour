@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from openai import OpenAI
 from engine import load_data
@@ -40,14 +40,26 @@ def normalize_text_numbers(text):
 
 
 NUMBER_PATTERN = re.compile(r"[+−-]?\d+(?:[ \u00a0\u202f]\d{3})*(?:[.,]\d+)?(?:[eE][+−-]?\d+)?")
+STANDALONE_NUMBER_PATTERN = re.compile(rf"(?<![\w])({NUMBER_PATTERN.pattern})(?![\w])")
+NUMBER_TOLERANCE = Decimal("0.01")
+CENT = Decimal("0.01")
+
+
+def _decimal_number(value):
+    try:
+        number = Decimal(str(value).replace("−", "-").replace(",", ".").replace(" ", "").replace("\u00a0", "").replace("\u202f", ""))
+        return number if number.is_finite() else None
+    except (ValueError, OverflowError, InvalidOperation):
+        return None
 
 
 def _number_key(value):
+    number = _decimal_number(value)
+    if number is None:
+        return None
     try:
-        number = float(str(value).replace("−", "-").replace(",", ".").replace(" ", "").replace("\u00a0", "").replace("\u202f", ""))
-        key = Decimal(f"{number:.2f}")
-        return key if key.is_finite() else None
-    except (ValueError, OverflowError, InvalidOperation):
+        return number.quantize(CENT, rounding=ROUND_HALF_UP)
+    except InvalidOperation:
         return None
 
 
@@ -55,9 +67,9 @@ def _numbers(value):
     if isinstance(value, bool) or value is None:
         return set()
     if isinstance(value, (int, float)):
-        return {_number_key(value)}
+        return {_decimal_number(value)}
     if isinstance(value, str):
-        return {_number_key(match.group()) for match in NUMBER_PATTERN.finditer(value)}
+        return {_decimal_number(match.group(1)) for match in STANDALONE_NUMBER_PATTERN.finditer(value)}
     if isinstance(value, dict):
         return set().union(*(_numbers(item) for item in value.values()))
     if isinstance(value, (list, tuple)):
@@ -65,10 +77,69 @@ def _numbers(value):
     return set()
 
 
-def numbers_supported(text, inputs):
+def _population_shares(value):
+    shares = []
+    if isinstance(value, dict):
+        population = value.get("population")
+        if isinstance(population, (int, float)) and not isinstance(population, bool):
+            number = _decimal_number(population)
+            if number is not None:
+                shares.append(number)
+        for item in value.values():
+            shares.extend(_population_shares(item))
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            shares.extend(_population_shares(item))
+    return shares
+
+
+def _allowed_numbers(inputs):
+    sources = _numbers(inputs) - {None}
+    candidates = set(sources)
+    source_values = list(sources)
+    candidates.update(Decimal(value) for value in range(11))
+    for index, first in enumerate(source_values):
+        for second in source_values[index:]:
+            candidates.add(first + second)
+            candidates.add(first - second)
+            candidates.add(second - first)
+    candidates.update(share * Decimal(100) for share in _population_shares(inputs))
+    return candidates
+
+
+def unsupported_numbers(text, inputs):
     values = _numbers(text)
-    allowed = _numbers(inputs) - {None}
-    return None not in values and values <= allowed
+    allowed = _allowed_numbers(inputs)
+    return {value for value in values if value is None or not any(abs(value - candidate) <= NUMBER_TOLERANCE for candidate in allowed)}
+
+
+def numbers_supported(text, inputs):
+    return not unsupported_numbers(text, inputs)
+
+
+def _unsupported_against(text, allowed):
+    values = _numbers(text)
+    return {value for value in values if value is None or not any(abs(value - candidate) <= NUMBER_TOLERANCE for candidate in allowed)}
+
+
+def _clean_unsupported_sentences(text, allowed):
+    parts = re.split(r"(?<=[.!?])\s+|\n+", text.strip())
+    kept = [part.strip() for part in parts if part.strip() and not _unsupported_against(part, allowed)]
+    return " ".join(kept)
+
+
+def _clean_analysis_numbers(value, inputs):
+    result = dict(value)
+    allowed = _allowed_numbers(inputs)
+    result["summary"] = _clean_unsupported_sentences(result["summary"], allowed)
+    for key in ANALYSIS_KEYS[1:]:
+        result[key] = [_clean_unsupported_sentences(item, allowed) for item in result[key]]
+        result[key] = [item for item in result[key] if item]
+    return result
+
+
+def _has_analysis_text(value):
+    return any(value.get(key) for key in ANALYSIS_KEYS)
 
 
 def _valid_analysis(value):
@@ -192,13 +263,17 @@ def _request_analysis(payload):
             result = json.loads(content)
         except (TypeError, json.JSONDecodeError):
             result = None
-        if _valid_analysis(result) and numbers_supported(result, payload):
-            result["summary"] = normalize_text_numbers(result["summary"])
-            for key in ANALYSIS_KEYS[1:]:
-                result[key] = [normalize_text_numbers(item) for item in result[key]]
-            return result
+        if _valid_analysis(result):
+            supported = numbers_supported(result, payload)
+            if supported or attempt == 1:
+                result = _clean_analysis_numbers(result, payload)
+                if _valid_analysis(result) and _has_analysis_text(result):
+                    result["summary"] = normalize_text_numbers(result["summary"])
+                    for key in ANALYSIS_KEYS[1:]:
+                        result[key] = [normalize_text_numbers(item) for item in result[key]]
+                    return result
         messages.append({"role": "assistant", "content": content})
-        messages.append({"role": "user", "content": "Ответ не соответствует схеме или содержит числа, которых нет во входных данных. Повтори один раз: верни JSON с точными ключами и типами. Все числа бери только из исходного входа, без собственных вычислений; неподтверждённые числа убери."})
+        messages.append({"role": "user", "content": "Ответ не соответствует схеме или содержит неподтверждённые числа. Повтори один раз: верни JSON с точными ключами и типами. Разрешены исходные числа с точностью до 0,01, суммы и разности двух исходных чисел, проценты от долей населения и целые числа от 0 до 10. Если число не получается обосновать этими правилами, убери предложение с ним."})
     return None
 
 
