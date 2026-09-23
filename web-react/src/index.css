@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #F4F1E9;
+  --color-surface: #FFFDF8;
+  --color-surface-muted: #EAE9E1;
+  --color-petrol: #102F35;
+  --color-petrol-soft: #21464A;
+  --color-ink: #172E32;
+  --color-muted: #586967;
+  --color-cream: #F7F3E9;
+  --color-line: #D8DDD5;
+  --color-gold: #D4B978;
+  --color-gold-hover: #E1C98F;
+  --color-sage: #BFD1AE;
+  --color-positive: #376849;
+  --color-positive-bg: #E5EEE2;
+  --color-warning: #875D20;
+  --color-warning-bg: #F5EAD3;
+  --color-negative: #A04436;
+  --color-negative-bg: #F7E5DF;
+  --color-focus: #307D89;
+  --color-dir-t: #6FA3BF;
+  --color-dir-e: #8DB889;
+  --color-dir-s: #D9A85C;
+  --color-dir-b: #A98BC4;
+  --color-dir-c: #5F9E97;
+  --font-ui: "Onest", Arial, sans-serif;
+  --font-display: "Manrope", "Onest", Arial, sans-serif;
+  --shadow-panel: 0 12px 36px rgb(16 47 53 / 8%);
+  --radius-card: 14px;
+  --radius-hero: 20px;
+}
+
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--color-bg); color: var(--color-ink); font-family: var(--font-ui); -webkit-font-smoothing: antialiased; }
+.display { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.03em; }
+.tabular { font-variant-numeric: tabular-nums; }
+.card { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius-card); box-shadow: var(--shadow-panel); }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 8px 24px; border-radius: 8px; font-weight: 600; transition: transform 160ms cubic-bezier(.22,1,.36,1), background 160ms, box-shadow 160ms; cursor: pointer; border: 1px solid transparent; }
+.btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-panel); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-gold { background: var(--color-gold); color: var(--color-ink); }
+.btn-gold:hover:not(:disabled) { background: var(--color-gold-hover); }
+.btn-dark { background: var(--color-petrol); color: var(--color-cream); }
+.btn-light { background: var(--color-surface); color: var(--color-ink); border-color: var(--color-line); }
+.btn-ghost { background: transparent; color: var(--color-cream); border-color: rgb(247 243 233 / 35%); }
+:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
