@@ -4,9 +4,9 @@ import os
 from openai import OpenAI
 
 from engine import load_data, validate, simulate, optimize
-from ai.explainer import fallback_analysis
+from ai.explainer import fallback_analysis, normalize_text_numbers
 
-SYSTEM_PROMPT = "Ты аким города. Цель пользователя: {goal}. Предложи набор мер, проверяй каждый набор инструментами validate_plan и simulate_plan, затем улучшай решение. Числа бери только из результатов инструментов. Пиши по-русски, десятичную дробь оформляй запятой, для показателей используй русские названия. Когда готов, верни строго JSON: объект с decisions (список объектов measure_id и district) и explanation (строка)."
+SYSTEM_PROMPT = "Ты аким города. Цель пользователя: {goal}. Предложи набор мер, проверяй каждый набор инструментами validate_plan и simulate_plan, затем улучшай решение. Числа бери только из результатов инструментов. Пиши по-русски, каждое число в объяснении оформляй десятичной запятой и ровно двумя знаками после запятой, для показателей используй русские названия. Когда готов, верни строго JSON: объект с decisions (список объектов measure_id и district) и explanation (строка)."
 TOOL_LIMIT = 8
 
 TOOLS = [
@@ -51,10 +51,27 @@ def _number(value):
     return f"{value:.2f}".replace(".", ",")
 
 
+def round_floats(value):
+    if isinstance(value, float):
+        return round(value, 2)
+    if isinstance(value, dict):
+        rounded = {key: round_floats(item) for key, item in value.items()}
+        score = rounded.get("score")
+        base_score = rounded.get("base_score")
+        if "delta" in rounded and isinstance(score, (int, float)) and isinstance(base_score, (int, float)):
+            rounded["delta"] = round(round(score, 2) - round(base_score, 2), 2)
+        return rounded
+    if isinstance(value, list):
+        return [round_floats(item) for item in value]
+    if isinstance(value, tuple):
+        return [round_floats(item) for item in value]
+    return value
+
+
 def _validation_summary(result):
     if result.get("valid"):
         return f"План валиден. Стоимость {_number(result.get('total_cost', 0))}, доступно {_number(result.get('budget', 0))}, остаток {_number(result.get('budget_left', 0))}."
-    return "План невалиден: " + "; ".join(result.get("errors", []))
+    return "План невалиден: " + normalize_text_numbers("; ".join(result.get("errors", [])))
 
 
 def _simulation_summary(result):
@@ -65,8 +82,7 @@ def _step(action, decisions, summary):
     return {"action": action, "decisions": decisions, "summary": summary}
 
 
-def _fallback(event_id, steps):
-    candidates = optimize(top=1, event_id=event_id)
+def _fallback(event_id, steps, candidates):
     if not candidates:
         decisions = []
         result = simulate(decisions, event_id=event_id)
@@ -84,6 +100,57 @@ def _fallback(event_id, steps):
     analysis = fallback_analysis(result)
     explanation = " ".join([analysis["summary"], *analysis["strengths"][:3]])
     return {"decisions": decisions, "simulation": result, "steps": steps, "explanation": explanation, "source": "fallback"}
+
+
+def _comparison_sentence(agent_simulation, optimizer_simulation, goal):
+    agent_score = round(agent_simulation.get("score", 0), 2)
+    optimizer_score = round(optimizer_simulation.get("score", 0), 2)
+    if agent_score >= optimizer_score:
+        relation = "равен" if agent_score == optimizer_score else "выше"
+        return f"Score плана агента {relation} Score оптимизатора: {_number(agent_score)} против {_number(optimizer_score)}."
+
+    data = load_data()
+    goal_text = (goal or "").casefold().replace("ё", "е")
+    target_names = [district["name"] for district in data.get("districts", []) if district["name"].casefold().replace("ё", "е")[:3] in goal_text]
+    names = {item["id"]: item["name"] for item in data.get("indicators", [])}
+    agent_districts = {item["name"]: item for item in agent_simulation.get("districts", [])}
+    optimizer_districts = {item["name"]: item for item in optimizer_simulation.get("districts", [])}
+    candidates = []
+    for district_name in target_names or list(agent_districts):
+        agent_district = agent_districts.get(district_name, {})
+        optimizer_district = optimizer_districts.get(district_name, {})
+        agent_before = agent_district.get("before", {}) or {}
+        agent_after = agent_district.get("after", {}) or {}
+        optimizer_before = optimizer_district.get("before", {}) or {}
+        optimizer_after = optimizer_district.get("after", {}) or {}
+        for indicator_id in set(agent_before) & set(agent_after) & set(optimizer_before) & set(optimizer_after):
+            agent_gain = round(agent_after[indicator_id] - agent_before[indicator_id], 2)
+            optimizer_gain = round(optimizer_after[indicator_id] - optimizer_before[indicator_id], 2)
+            advantage = round(agent_gain - optimizer_gain, 2)
+            if advantage > 0:
+                candidates.append((advantage, district_name, indicator_id, agent_gain, optimizer_gain))
+    if candidates:
+        _, district_name, indicator_id, agent_gain, optimizer_gain = max(candidates)
+        indicator_name = names.get(indicator_id, indicator_id)
+        return f"Хотя общий Score оптимизатора выше ({_number(optimizer_score)} против {_number(agent_score)}), для цели «{goal or 'улучшить район'}» в районе «{district_name}» показатель «{indicator_name}» вырос сильнее: +{_number(agent_gain)} у плана агента против +{_number(optimizer_gain)} у оптимизатора."
+    return f"Score оптимизатора выше ({_number(optimizer_score)} против {_number(agent_score)}); по показателям и районам из симуляций не нашлось преимущества плана агента для цели «{goal or 'пользователя'}»."
+
+
+def _finish(result, event_id, goal, candidates=None):
+    if candidates is None:
+        candidates = optimize(top=1, event_id=event_id)
+    optimizer_score = None
+    comparison = "Оптимизатор не вернул допустимого плана для сравнения."
+    if candidates:
+        optimizer_decisions = candidates[0]["decisions"]
+        optimizer_validation = validate(optimizer_decisions, event_id=event_id)
+        if optimizer_validation.get("valid"):
+            optimizer_simulation = simulate(optimizer_decisions, event_id=event_id)
+            optimizer_score = round(optimizer_simulation.get("score", 0), 2)
+            comparison = _comparison_sentence(result["simulation"], optimizer_simulation, goal)
+    result["optimizer_score"] = optimizer_score
+    result["explanation"] = f"{result['explanation']} {comparison}".strip()
+    return result
 
 
 def _tool_result(name, arguments, event_id, steps, valid_plans):
@@ -120,7 +187,8 @@ def _parse_final(content):
 def run_agent(goal=None, event_id=None):
     steps = []
     if not os.environ.get("OPENAI_API_KEY"):
-        return _fallback(event_id, steps)
+        candidates = optimize(top=1, event_id=event_id)
+        return _finish(_fallback(event_id, steps, candidates), event_id, goal, candidates)
     try:
         client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         prompt = SYSTEM_PROMPT.format(goal=goal or "сбалансированно повысить качество жизни жителей")
@@ -152,16 +220,18 @@ def run_agent(goal=None, event_id=None):
                 except json.JSONDecodeError:
                     arguments = {}
                 result = _tool_result(call.function.name, arguments, event_id, steps, valid_plans)
-                messages.append({"role": "tool", "tool_call_id": call.id, "content": json.dumps(result, ensure_ascii=False)})
+                messages.append({"role": "tool", "tool_call_id": call.id, "content": json.dumps(round_floats(result), ensure_ascii=False)})
         if final is None:
-            return _fallback(event_id, steps)
+            candidates = optimize(top=1, event_id=event_id)
+            return _finish(_fallback(event_id, steps, candidates), event_id, goal, candidates)
         proposed = final["decisions"]
         validation = validate(proposed, event_id=event_id)
         steps.append(_step("validate", proposed, _validation_summary(validation)))
         if validation.get("valid"):
             result = simulate(proposed, event_id=event_id)
             steps.append(_step("simulate", proposed, _simulation_summary(result)))
-            return {"decisions": proposed, "simulation": result, "steps": steps, "explanation": final["explanation"], "source": "ai"}
+            response = {"decisions": proposed, "simulation": result, "steps": steps, "explanation": normalize_text_numbers(final["explanation"]), "source": "ai"}
+            return _finish(response, event_id, goal)
         scored = []
         for decisions in valid_plans:
             check = validate(decisions, event_id=event_id)
@@ -170,11 +240,14 @@ def run_agent(goal=None, event_id=None):
             result = simulate(decisions, event_id=event_id)
             scored.append((result.get("score", float("-inf")), decisions, result))
         if not scored:
-            return _fallback(event_id, steps)
+            candidates = optimize(top=1, event_id=event_id)
+            return _finish(_fallback(event_id, steps, candidates), event_id, goal, candidates)
         _, decisions, result = max(scored, key=lambda item: item[0])
         steps.append(_step("simulate", decisions, _simulation_summary(result)))
         analysis = fallback_analysis(result)
         explanation = "Лучший валидный проверенный план: " + analysis["summary"]
-        return {"decisions": decisions, "simulation": result, "steps": steps, "explanation": explanation, "source": "fallback"}
+        response = {"decisions": decisions, "simulation": result, "steps": steps, "explanation": explanation, "source": "fallback"}
+        return _finish(response, event_id, goal)
     except Exception:
-        return _fallback(event_id, steps)
+        candidates = optimize(top=1, event_id=event_id)
+        return _finish(_fallback(event_id, steps, candidates), event_id, goal, candidates)
