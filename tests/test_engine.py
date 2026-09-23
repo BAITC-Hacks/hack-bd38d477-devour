@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from engine import optimize, simulate, validate
+from engine import get_event, list_events, optimize, simulate, validate
 
 TOLERANCE = 0.01
 
@@ -210,3 +210,84 @@ def test_optimize_is_cached_and_immutable():
     second = optimize(3)
     assert second[0]["score"] != -1
     assert optimize(0) == []
+
+
+def test_event_catalog_contents():
+    events = list_events()
+    assert [event["id"] for event in events] == ["EV1", "EV2", "EV3", "EV4", "EV5"]
+    districts = {"Есиль", "Алматы", "Сарыарка", "Байконур", "Нура"}
+    for event in events:
+        assert event["name"] and event["description"]
+        assert 5 <= event["budget_penalty"] <= 15
+        assert event["effects"]
+        assert all(shift < 0 for shift in event["effects"].values())
+        assert event["district"] is None or event["district"] in districts
+    assert get_event("EV1")["district"] == "Алматы"
+    assert get_event("EV5")["district"] is None
+
+
+def test_get_event_unknown_id_raises_russian_error():
+    with pytest.raises(ValueError) as info:
+        get_event("EV42")
+    message = str(info.value)
+    assert "Неизвестное событие" in message
+    assert "EV1" in message
+
+
+def test_calls_without_event_keep_control_numbers():
+    assert simulate([], None)["score"] == pytest.approx(52.55768, abs=TOLERANCE)
+    assert simulate(CONTROL_SET, None)["score"] == pytest.approx(56.54307, abs=TOLERANCE)
+    assert simulate([])["event"] is None
+    assert simulate(CONTROL_SET)["event"] is None
+    assert validate(CONTROL_SET, None) == validate(CONTROL_SET)
+    assert validate(CONTROL_SET)["budget"] == 100
+    assert optimize(3, None) == optimize(3)
+
+
+def test_every_event_lowers_base_score():
+    for event in list_events():
+        result = simulate([], event["id"])
+        assert result["score"] < 52.55768
+        assert result["event"]["id"] == event["id"]
+        assert result["budget"] == 100 - event["budget_penalty"]
+
+
+def test_event_effects_are_not_scaled_by_lag():
+    result = simulate([], "EV3")
+    nura = next(item for item in result["districts"] if item["name"] == "Нура")
+    assert nura["before"]["B2"] == pytest.approx(36.0, abs=1e-9)
+    city = simulate([], "EV5")
+    for district in city["districts"]:
+        base = next(item for item in simulate([])["districts"] if item["name"] == district["name"])
+        assert district["before"]["T1"] == pytest.approx(base["before"]["T1"] - 10, abs=1e-9)
+
+
+def test_expensive_set_invalid_under_heavy_event():
+    assert validate(CONTROL_SET)["total_cost"] == 95
+    for event in list_events():
+        result = validate(CONTROL_SET, event["id"])
+        assert result["budget"] == 100 - event["budget_penalty"]
+        if event["budget_penalty"] >= 10:
+            assert result["valid"] is False
+            assert any(event["name"] in error for error in result["errors"])
+
+
+def test_optimize_under_event_returns_valid_sets():
+    for event in list_events():
+        best = optimize(3, event["id"])
+        assert len(best) == 3
+        for item in best:
+            assert validate(item["decisions"], event["id"])["valid"] is True
+            assert item["total_cost"] <= 100 - event["budget_penalty"]
+            assert item["score"] == pytest.approx(
+                simulate(item["decisions"], event["id"])["score"], abs=1e-9
+            )
+
+
+def test_optimize_cache_is_separate_per_event():
+    assert optimize(1)[0]["score"] != optimize(1, "EV5")[0]["score"]
+    assert optimize(1, "EV1") != optimize(1, "EV2")
+
+    started = time.monotonic()
+    optimize(3, "EV4")
+    assert time.monotonic() - started < 10
