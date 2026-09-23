@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Кабинет акима — Аким на 5 часов</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/v2/styles.css">
+</head>
+<body>
+  <a class="skip-link btn btn-primary" href="#main">Перейти к содержимому</a>
+  <aside class="sidebar glass">
+    <a class="brand-icon" href="#city" aria-label="Аким на 5 часов — город">А</a>
+    <nav aria-label="Разделы симулятора">
+      <button type="button" data-page="city" class="active" aria-label="Город" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 21V9h6V3h6v10h6v8H3Z M6 12v2m0 3v2m6-13v2m0 3v2m0 3v3m6-3v3"/></svg><span class="nav-label">Город</span></button>
+      <button type="button" data-page="decisions" aria-label="Решения"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 5h12M9 12h12M9 19h12M3 5l1 1 2-3M3 12l1 1 2-3M3 19l1 1 2-3"/></svg><span class="nav-label">Решения</span></button>
+      <button type="button" data-page="result" aria-label="Результат"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 3v18h17M8 17v-5m5 5V8m5 9V4"/></svg><span class="nav-label">Результат</span></button>
+      <button type="button" data-page="compare" aria-label="Сравнение"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="5" width="7" height="15" rx="2"/><rect x="14" y="3" width="7" height="17" rx="2"/></svg><span class="nav-label">Сравнение</span></button>
+      <button type="button" data-page="optimizer" aria-label="Оптимизатор"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-8l1-7Z"/></svg><span class="nav-label">Оптимизатор</span></button>
+      <button type="button" data-page="events" aria-label="События"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 17h14l-2-4V9a5 5 0 0 0-10 0v4l-2 4ZM10 21h4M12 2v2"/></svg><span class="nav-label">События</span></button>
+      <button type="button" data-page="agent" aria-label="AI-аким"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z"/></svg><span class="nav-label">AI-аким</span></button>
+    </nav>
+    <span class="sidebar-caption">АСТАНА · 8 КВАРТАЛОВ</span>
+  </aside>
+  <main id="main" tabindex="-1">
+    <header class="header"><a class="brand" href="#city">Аким на 5 часов<small>Кабинет городских решений</small></a><span class="city-label">АСТАНА · ГОРИЗОНТ 8 КВАРТАЛОВ</span></header>
+    <div class="hero">
+      <div><p class="eyebrow">ВАШ ГОРОД. ВАШИ РЕШЕНИЯ.</p><h1>Большие перемены<br>начинаются с пяти решений.</h1><p>У вас 100 единиц бюджета и пять районов. Соберите программу, которая сделает жизнь в Астане лучше.</p></div>
+      <div class="hero-score card-ink" aria-live="polite" aria-atomic="true"><span id="hero-score-label">Базовый индекс · без события</span><strong id="base-score" class="display" data-countup>—</strong><span id="hero-score-delta" class="hero-score-delta" hidden></span><span>Astana Quality of Life Score</span></div>
+    </div>
+    <div id="notice" role="alert" hidden></div>
+    <p id="loading" role="status">Загружаем данные города…</p>
+    <section id="city" class="page" aria-labelledby="city-title">
+      <div class="section-heading"><div><p class="eyebrow">01 / ТОЧКА ОТСЧЁТА</p><h2 id="city-title">Пять районов — один город</h2></div><a class="btn btn-glass" href="#decisions">Перейти к решениям →</a></div>
+      <div class="city-layout"><div id="districts" class="district-grid"></div><div class="card glass map-card"><div class="map-heading"><div><p class="eyebrow">АСТАНА</p><h2>Город в деталях</h2></div><span class="chip">5 районов</span></div><div id="city-map" role="region" aria-label="Карта районов Астаны"></div><div class="map-legend"><span><i class="crit"></i>Ниже 40</span><span><i class="low"></i>40–55</span><span><i></i>55–65</span><span><i class="good"></i>Выше 65</span></div></div></div>
+      <p class="note">Все показатели от 0 до 100: больше — лучше. Индекс учитывает среднюю оценку, самый слабый район и число критических показателей.</p>
+    </section>
+    <section id="decisions" class="page" aria-labelledby="decisions-title" hidden>
+      <div class="section-heading"><div><p class="eyebrow">02 / ВАША ПРОГРАММА</p><h2 id="decisions-title">Пять шагов к лучшему городу</h2></div><div class="actions"><button id="demo" class="btn btn-glass secondary" disabled>Демо-сценарий</button><button id="clear" class="btn btn-glass secondary">Сбросить выбор</button></div></div>
+      <div class="decision-layout"><div id="catalog"></div><aside class="budget-panel card"><p class="eyebrow">БЮДЖЕТ ПРОГРАММЫ</p><h3>Ресурсы для перемен</h3><p id="active-event" class="muted" aria-live="polite">Без события</p><span class="label">Осталось</span><strong id="remaining" class="display" data-countup>100</strong><div class="budget-number">Использовано <strong id="cost" data-countup>0</strong> из <span id="budget">100</span></div><div id="budget-segments" aria-label="Распределение бюджета по направлениям"></div><progress id="budget-bar" value="0" max="100" aria-label="Использованный бюджет"></progress><p>Выбрано мер: <strong id="count">0 / 5</strong></p><p class="muted">Не больше двух мер из одного направления. Для районных мер выберите район.</p><div id="validation" aria-live="polite"></div><button id="calculate" class="btn btn-accent" disabled>Рассчитать результат →</button></aside></div>
+    </section>
+    <section id="result" class="page" aria-labelledby="result-title" hidden>
+      <div class="section-heading"><div><p class="eyebrow">03 / ЭФФЕКТ ПРОГРАММЫ</p><h2 id="result-title">Что изменится за 8 кварталов</h2></div><button id="report-button" class="btn btn-glass" disabled>Сформировать отчёт</button></div>
+      <div id="result-content" class="empty">Выберите валидный набор из пяти мер и нажмите «Рассчитать».</div>
+      <div id="save-panel" class="panel card" hidden><label for="scenario-name">Название сценария</label><div class="inline"><input id="scenario-name" maxlength="80" placeholder="Например, Забота о Нуре"><button id="save" class="btn btn-primary">Сохранить для сравнения</button></div><p id="save-status" role="status"></p></div>
+    </section>
+    <section id="compare" class="page" aria-labelledby="compare-title" hidden>
+      <div class="section-heading"><div><p class="eyebrow">04 / НАЙДИТЕ БАЛАНС</p><h2 id="compare-title">Разные решения. Разное будущее.</h2></div><button id="compare-button" class="btn btn-accent" disabled>Сравнить сценарии</button></div><p class="muted">Сохраните от двух до трёх рассчитанных сценариев. Каждый сохраняет своё событие. Сценарии хранятся в этой вкладке до перезагрузки страницы.</p><div id="saved" class="cards"></div><div id="comparison" aria-live="polite"></div>
+    </section>
+    <section id="optimizer" class="page" aria-labelledby="optimizer-title" hidden>
+      <div class="section-heading"><div><p class="eyebrow">05 / ПОМОЩЬ В ПЛАНИРОВАНИИ</p><h2 id="optimizer-title">Больше пользы на тот же бюджет</h2></div><button id="optimize" class="btn btn-accent">Найти лучший набор</button></div><p class="muted">Движок подберёт пять лучших наборов по Score с учётом бюджета и ограничений. AI не участвует в расчёте чисел.</p><p id="optimizer-context" class="note event-context" aria-live="polite">Без события · бюджет 100</p><div id="optimal" class="cards" aria-live="polite"></div>
+    </section>
+    <section id="events" class="page" aria-labelledby="events-title" hidden>
+      <div class="section-heading"><div><p class="eyebrow">06 / ГОРОДСКАЯ ПОВЕСТКА</p><h2 id="events-title">Когда город меняет ваши планы</h2></div><div class="actions"><button id="no-event" class="btn btn-glass secondary" aria-pressed="true" disabled>Без события</button><button id="retry-events" class="btn btn-glass secondary" disabled>Обновить события</button></div></div><div id="event-banner" class="event-banner" role="status" hidden></div><p class="muted">Событие меняет исходные показатели и уменьшает бюджет на ликвидацию последствий. После выбора набор мер проверяется заново.</p><p id="events-status" role="status">Загружаем события…</p><div id="event-list" class="cards"></div>
+    </section>
+    <section id="agent" class="page" aria-labelledby="agent-title" hidden>
+      <div class="section-heading"><div><p class="eyebrow">07 / ВАШ AI-СОВЕТНИК</p><h2 id="agent-title">Каким вы хотите видеть город?</h2></div><span class="chip">От цели к программе</span></div>
+      <div class="agent-layout"><div class="card"><label for="agent-goal">Задача для AI-акима</label><textarea id="agent-goal" placeholder="Например, улучшить доступность школ и поликлиник в Нуре, сохранив баланс бюджета."></textarea><p class="note">Опишите приоритеты. AI предложит программу, а движок проверит ограничения и рассчитает её результат.</p><button id="agent-run" type="button" class="btn btn-accent">Спросить AI-акима</button><p id="agent-status" role="status" aria-live="polite"></p></div><div><p class="eyebrow">ХОД РАБОТЫ</p><h2>От замысла к решению</h2><div id="agent-steps" role="log" aria-live="polite"></div></div></div><div id="agent-result" aria-live="polite"></div>
+    </section>
+    <footer>Аким на 5 часов <span>Учебная модель · Числа считает движок, AI объясняет результат</span></footer>
+  </main>
+  <script>
+    (() => {
+      const band = value => value < 40 ? 'crit' : value < 55 ? 'low' : value <= 65 ? 'mid' : 'good';
+      const iconPaths = {T:'M5 17V5h14v12H5Zm2 0v3m10-3v3M5 10h14M8 14h1m6 0h1',E:'M12 21V10m0 5C3 15 3 5 3 5s9 0 9 10Zm0-3C12 3 21 3 21 3s0 9-9 9Z',S:'M3 10 12 4l9 6-9 6-9-6Zm4 3v5l5 3 5-3v-5',B:'M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Zm-4 9 3 3 5-6',C:'M5 4h14v13H9l-4 4V4Zm4 5h6m-6 4h4'};
+      const addIcon = (element,direction) => {
+        const icon = document.createElement('span');
+        icon.className = 'dir-icon';
+        icon.dataset.direction = direction;
+        icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="' + iconPaths[direction] + '"/></svg>';
+        element.prepend(icon);
+      };
+      document.addEventListener('DOMContentLoaded', () => {
+        const root = document.querySelector('main');
+        const enhance = () => {
+          observer.disconnect();
+          document.querySelectorAll('#catalog .measure-grid').forEach((group,index) => {
+            const direction = ['T','E','S','B','C'][index];
+            group.querySelectorAll('.measure').forEach(row => {
+              row.classList.add('measure-row');
+              row.dataset.direction = direction;
+              if (!row.querySelector('.dir-icon')) addIcon(row.querySelector('.check'),direction);
+            });
+          });
+          document.querySelectorAll('.option,.panel,.district').forEach(element => element.classList.add('card'));
+          document.querySelectorAll('.stat').forEach(element => { element.classList.add('tile'); element.querySelector('strong')?.setAttribute('data-countup',''); });
+          document.querySelectorAll('.heatmap td strong').forEach(element => { element.parentElement.dataset.scoreBand = band(Number(element.textContent.replace(' !','').replace(',','.').replace(/\s/g,''))); element.parentElement.style.removeProperty('background-color'); });
+          document.querySelectorAll('#districts .district').forEach(element => {
+            if (element.querySelector('details')) return;
+            const indicators = [...element.querySelectorAll('.indicator')];
+            const values = indicators.map(item => Number(item.querySelector('strong').textContent.replace(' !','').replace(',','.')));
+            const lowest = values.indexOf(Math.min(...values));
+            const summary = document.createElement('p');
+            summary.className = 'district-summary';
+            summary.textContent = 'Слабый показатель: ' + indicators[lowest]?.querySelector('.indicator-head span').textContent + ' · ' + values[lowest].toLocaleString('ru-RU') + '. Критических: ' + values.filter(value => value < 40).length;
+            const details = document.createElement('details');
+            const toggle = document.createElement('summary');
+            toggle.textContent = 'Все показатели';
+            details.append(toggle,...indicators);
+            element.append(summary,details);
+          });
+          const banner = document.querySelector('#event-banner');
+          const selected = document.querySelector('#event-list .selected');
+          banner.hidden = !selected;
+          if (selected) banner.textContent = document.querySelector('#active-event').textContent;
+          document.querySelectorAll('main button').forEach(button => button.classList.add('btn'));
+          observer.observe(root,{childList:true,subtree:true});
+        };
+        const observer = new MutationObserver(enhance);
+        enhance();
+        fetch('/api/state').then(response => { if (!response.ok) throw new Error('state'); return response.json(); }).then(data => {
+          const update = () => {
+            document.querySelectorAll('#districts .district').forEach(element => {
+              const district = data.districts.find(item => item.name === element.querySelector('h3')?.textContent);
+              if (!district || element.querySelector('.district-score')) return;
+              const score = document.createElement('strong');
+              score.className = 'district-score';
+              score.setAttribute('data-countup','');
+              score.textContent = Number(district.base_score).toLocaleString('ru-RU',{maximumFractionDigits:2});
+              element.append(score);
+            });
+          };
+          update();
+          const districtObserver = new MutationObserver(update);
+          districtObserver.observe(document.querySelector('#districts'),{childList:true});
+        }).catch(() => {});
+      });
+    })();
+  </script>
+  <script src="/app.js" defer></script>
+  <script src="/v2/map.js" defer></script>
+  <script src="/v2/agent.js" defer></script>
+</body>
+</html>
