@@ -7,6 +7,13 @@ from api.main import app
 
 POST_PATHS = ["/api/validate", "/api/simulate", "/api/explain"]
 
+HAS_AGENT_ENDPOINT = any(getattr(route, "path", None) == "/api/agent" for route in app.routes)
+requires_agent = pytest.mark.skipif(
+    not HAS_AGENT_ENDPOINT, reason="В api/main.py ещё нет POST /api/agent"
+)
+AGENT_KEYS = {"decisions", "simulation", "steps", "explanation", "source"}
+STEP_ACTIONS = {"validate", "simulate"}
+
 BROKEN_DECISIONS = [
     {},
     {"decisions": "M7"},
@@ -341,3 +348,115 @@ def test_no_endpoint_answers_with_server_error(client):
     for method, path, kwargs in requests:
         response = client.request(method, path, **kwargs)
         assert response.status_code < 500, (method, path, response.status_code, response.text[:200])
+
+
+@requires_agent
+def test_agent_returns_contract_shape(client):
+    response = client.post("/api/agent", json={"goal": None, "event_id": None})
+    assert response.status_code == 200
+    body = response.json()
+    assert AGENT_KEYS <= set(body)
+    assert isinstance(body["decisions"], list) and len(body["decisions"]) == 5
+    for decision in body["decisions"]:
+        assert set(decision) >= {"measure_id", "district"}
+        assert isinstance(decision["measure_id"], str)
+        assert decision["district"] is None or isinstance(decision["district"], str)
+    assert isinstance(body["simulation"], dict)
+    assert {"score", "base_score", "total_cost", "districts"} <= set(body["simulation"])
+    assert isinstance(body["explanation"], str) and body["explanation"].strip()
+    assert body["source"] in {"ai", "fallback"}
+
+
+@requires_agent
+def test_agent_steps_describe_engine_calls(client):
+    body = client.post("/api/agent", json={"goal": None, "event_id": None}).json()
+    steps = body["steps"]
+    assert isinstance(steps, list) and steps
+    for step in steps:
+        assert set(step) >= {"action", "decisions", "summary"}
+        assert step["action"] in STEP_ACTIONS
+        assert isinstance(step["decisions"], list)
+        assert isinstance(step["summary"], str) and step["summary"].strip()
+    assert any(step["action"] == "simulate" for step in steps)
+
+
+@requires_agent
+def test_agent_uses_fallback_without_api_key(client):
+    body = client.post("/api/agent", json={"goal": None, "event_id": None}).json()
+    assert body["source"] == "fallback"
+
+
+@requires_agent
+def test_agent_result_is_valid_set(client):
+    body = client.post("/api/agent", json={"goal": None, "event_id": None}).json()
+    check = client.post("/api/validate", json={"decisions": body["decisions"]}).json()
+    assert check["valid"] is True
+    assert check["errors"] == []
+    assert check["total_cost"] <= check["budget"]
+
+
+@requires_agent
+def test_agent_score_matches_simulate(client):
+    body = client.post("/api/agent", json={"goal": None, "event_id": None}).json()
+    direct = client.post("/api/simulate", json={"decisions": body["decisions"]}).json()
+    assert body["simulation"]["score"] == pytest.approx(direct["score"], abs=0.01)
+    assert body["simulation"]["total_cost"] == direct["total_cost"]
+
+
+@requires_agent
+def test_agent_rounds_floats(client):
+    body = client.post("/api/agent", json={"goal": None, "event_id": None}).json()
+    assert_two_decimals(body)
+
+
+@requires_agent
+def test_agent_accepts_goal(client):
+    response = client.post(
+        "/api/agent", json={"goal": "поднять школы и поликлиники в Нуре", "event_id": None}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["decisions"]) == 5
+    assert client.post("/api/validate", json={"decisions": body["decisions"]}).json()["valid"] is True
+
+
+@requires_agent
+def test_agent_accepts_empty_json_object(client):
+    response = client.post("/api/agent", json={})
+    assert response.status_code == 200
+    body = response.json()
+    assert AGENT_KEYS <= set(body)
+    assert len(body["decisions"]) == 5
+
+
+@requires_agent
+def test_agent_handles_missing_body_without_server_error(client):
+    assert client.post("/api/agent", content=b"").status_code < 500
+
+
+@requires_agent
+@pytest.mark.parametrize("event_id", ["EV1", "EV5"])
+def test_agent_respects_event_budget(client, event_id):
+    event = next(item for item in client.get("/api/events").json() if item["id"] == event_id)
+    budget = 100 - event["budget_penalty"]
+    response = client.post("/api/agent", json={"goal": None, "event_id": event_id})
+    assert response.status_code == 200
+    body = response.json()
+    check = client.post(
+        "/api/validate", json={"decisions": body["decisions"], "event_id": event_id}
+    ).json()
+    assert check["valid"] is True
+    assert check["budget"] == budget
+    assert check["total_cost"] <= budget
+    assert body["simulation"]["event"]["id"] == event_id
+    direct = client.post(
+        "/api/simulate", json={"decisions": body["decisions"], "event_id": event_id}
+    ).json()
+    assert body["simulation"]["score"] == pytest.approx(direct["score"], abs=0.01)
+    assert_two_decimals(body)
+
+
+@requires_agent
+@pytest.mark.parametrize("event_id", BROKEN_EVENT_IDS)
+def test_agent_rejects_broken_event_id(client, event_id):
+    assert client.post("/api/agent", json={"goal": None, "event_id": event_id}).status_code == 422
