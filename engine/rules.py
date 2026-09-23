@@ -3,6 +3,8 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
+from engine.events import event_penalty, resolve_event
+
 DATA_PATH = Path(__file__).with_name("data.json")
 
 
@@ -28,9 +30,11 @@ def direction_names(data):
     return {item["id"]: item["name"] for item in data["directions"]}
 
 
-def validate(decisions):
+def validate(decisions, event_id=None):
     data = load_data()
-    budget = data["budget"]
+    event = resolve_event(event_id)
+    penalty = event_penalty(event)
+    budget = data["budget"] - penalty
     required = data["measures_required"]
     limit = data["max_per_direction"]
     measures = measures_index(data)
@@ -42,6 +46,7 @@ def validate(decisions):
             "valid": False,
             "errors": ["Решения должны быть списком объектов"],
             "total_cost": 0,
+            "budget": budget,
             "budget_left": budget,
         }
 
@@ -64,9 +69,15 @@ def validate(decisions):
         total_cost += measures[measure_id]["cost"]
 
     if total_cost > budget:
-        errors.append(
-            f"Стоимость набора {total_cost} превышает бюджет {budget} на {total_cost - budget}"
-        )
+        if event is None:
+            errors.append(
+                f"Стоимость набора {total_cost} превышает бюджет {budget} на {total_cost - budget}"
+            )
+        else:
+            errors.append(
+                f"Стоимость набора {total_cost} превышает бюджет {budget} на {total_cost - budget}: "
+                f"из-за события «{event['name']}» на ликвидацию ушло {penalty} из {data['budget']}"
+            )
 
     if len(decisions) != required:
         errors.append(
@@ -127,5 +138,6 @@ def validate(decisions):
         "valid": not errors,
         "errors": errors,
         "total_cost": total_cost,
+        "budget": budget,
         "budget_left": budget - total_cost,
     }
