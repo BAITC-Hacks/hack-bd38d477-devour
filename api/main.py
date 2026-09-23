@@ -10,11 +10,13 @@ from starlette.responses import FileResponse, JSONResponse
 from engine import load_data, validate, simulate, optimize, list_events, get_event
 from ai.advisor import recommendations
 from ai.explainer import explain_simulation, explain_comparison
+from ai.agent import run_agent
 
 load_dotenv()
 
 app = FastAPI()
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
+WEB_V2_DIR = Path(__file__).resolve().parent.parent / "web-v2"
 
 
 def round_floats(value):
@@ -56,6 +58,11 @@ class Scenario(BaseModel):
 
 class CompareRequest(BaseModel):
     scenarios: list[Scenario]
+
+
+class AgentRequest(BaseModel):
+    goal: str | None = None
+    event_id: str | None = None
 
 
 @app.get("/")
@@ -109,6 +116,12 @@ def explain(request: DecisionsRequest):
     return round_floats({"simulation": simulation, "analysis": analysis, "source": source})
 
 
+@app.post("/api/agent")
+def agent(request: AgentRequest):
+    check_event(request.event_id)
+    return round_floats(run_agent(request.goal, request.event_id))
+
+
 @app.post("/api/compare")
 def compare(request: CompareRequest):
     results = []
@@ -129,6 +142,9 @@ def run_optimizer(top: int = 5, event_id: str | None = None):
     check_event(event_id)
     return round_floats(optimize(top=top, event_id=event_id))
 
+
+if WEB_V2_DIR.is_dir():
+    app.mount("/v2", StaticFiles(directory=WEB_V2_DIR, html=True), name="web-v2")
 
 if WEB_DIR.is_dir():
     app.mount("/", StaticFiles(directory=WEB_DIR), name="web")
