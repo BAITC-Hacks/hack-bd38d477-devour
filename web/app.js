@@ -288,10 +288,14 @@ function openReport() {
   reportWindow.document.getElementById('print-report').addEventListener('click',() => reportWindow.print());
   reportWindow.opener = null;
 }
-$('nav').addEventListener('click',event => { if (event.target.dataset.page) page(event.target.dataset.page); });
+$('nav').addEventListener('click',event => {
+  const button = event.target.closest('[data-page]');
+  if (button && !button.disabled) page(button.dataset.page);
+});
 window.addEventListener('hashchange',() => page(location.hash.slice(1)));
 $('#catalog').addEventListener('change',event => {
-  const target = event.target;
+  const target = event.target.closest('[data-measure], [data-district]');
+  if (!target || target.disabled) return;
   if (target.dataset.measure) {
     decisions = decisions.filter(item => item.measure_id !== target.dataset.measure);
     if (target.checked) decisions.push({measure_id:target.dataset.measure,district:null});
@@ -300,22 +304,29 @@ $('#catalog').addEventListener('change',event => {
     const select = card.querySelector('select');
     if (select) { select.disabled = !target.checked; select.value = ''; }
   }
-  if (target.dataset.district) decisions.find(item => item.measure_id === target.dataset.district).district = target.value || null;
+  if (target.dataset.district) {
+    const decision = decisions.find(item => item.measure_id === target.dataset.district);
+    if (!decision) return;
+    decision.district = target.value || null;
+  }
   validateSelection();
 });
-$('#validation').addEventListener('click',event => { if (event.target.id === 'retry-validation') validateSelection(); });
+$('#validation').addEventListener('click',event => {
+  const button = event.target.closest('#retry-validation');
+  if (button && !button.disabled) validateSelection();
+});
 $('#clear').addEventListener('click',() => { if (!state) return; decisions = []; renderCatalog(); validateSelection(); });
 $('#calculate').addEventListener('click',calculate);
 $('#report-button').addEventListener('click',openReport);
 $('#result-content').addEventListener('click',event => {
-  const button = event.target.closest('button[data-recommendation]');
+  const button = event.target.closest('[data-recommendation]');
   if (button && !button.disabled) applyRecommendation(Number(button.dataset.recommendation));
 });
 $('#no-event').addEventListener('click',() => selectEvent(null));
 $('#retry-events').addEventListener('click',loadEvents);
 $('#event-list').addEventListener('click',event => {
-  const button = event.target.closest('button[data-event]');
-  if (button) selectEvent(button.dataset.event);
+  const button = event.target.closest('[data-event]');
+  if (button && !button.disabled) selectEvent(button.dataset.event);
 });
 $('#demo').addEventListener('click',() => {
   if (!state) return;
@@ -332,10 +343,27 @@ $('#save').addEventListener('click',() => {
   $('#comparison').innerHTML = '';
   $('#save-status').textContent = `«${name}» сохранён. Сценариев: ${saved.length} / 3.`;
 });
-$('#saved').addEventListener('click',event => { if (event.target.dataset.remove !== undefined) { saved.splice(Number(event.target.dataset.remove),1); renderSaved(); $('#comparison').innerHTML = ''; } });
+$('#saved').addEventListener('click',event => {
+  const button = event.target.closest('[data-remove]');
+  if (!button || button.disabled) return;
+  const index = Number(button.dataset.remove);
+  if (!Number.isInteger(index) || index < 0 || index >= saved.length) return;
+  saved.splice(index,1);
+  renderSaved();
+  $('#comparison').innerHTML = '';
+});
 $('#compare-button').addEventListener('click',compare);
 $('#optimize').addEventListener('click',() => { if (state) optimize(); });
-$('#optimal').addEventListener('click',event => { if (event.target.dataset.load !== undefined) { const item = optimal[Number(event.target.dataset.load)]; if (!item) return; decisions = copy(item.decisions); renderCatalog(); validateSelection(); page('decisions'); } });
+$('#optimal').addEventListener('click',event => {
+  const button = event.target.closest('[data-load]');
+  if (!button || button.disabled) return;
+  const item = optimal[Number(button.dataset.load)];
+  if (!item) return;
+  decisions = copy(item.decisions);
+  renderCatalog();
+  validateSelection();
+  page('decisions');
+});
 async function init() {
   $('#optimize').disabled = true;
   try {
