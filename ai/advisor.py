@@ -18,7 +18,7 @@ def _decision(measure, district):
     return {"measure_id": measure_id, "district": None if city else district}
 
 
-def recommendations(decisions, current_simulation):
+def recommendations(decisions, current_simulation, event_id=None):
     current_score = current_simulation.get("score")
     if not isinstance(current_score, (int, float)):
         return []
@@ -45,10 +45,10 @@ def recommendations(decisions, current_simulation):
                 if key in seen:
                     continue
                 seen.add(key)
-                validation = validate(candidate)
+                validation = validate(candidate, event_id=event_id)
                 if not validation.get("valid"):
                     continue
-                result = simulate(candidate)
+                result = simulate(candidate, event_id=event_id)
                 score = result.get("score")
                 if not isinstance(score, (int, float)) or score <= current_score:
                     continue
