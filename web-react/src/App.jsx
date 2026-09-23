@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AnimatePresence, animate, motion, useMotionValue } from 'framer-motion'
+import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, useScroll, useTransform } from 'framer-motion'
 import { AlertTriangle, ArrowRight, Check, CircleDot, Leaf, Plus, RefreshCw, Sparkles, Zap } from 'lucide-react'
 import { DEMO_SET, DIRECTIONS, DIRECTION_COLORS, DIRECTION_PHOTOS, DISTRICT_NOTES, LABELS, api, fmt, num, signed } from './api.js'
 
@@ -21,15 +21,72 @@ function Counter({ value, digits = 2, className = '' }) {
 
 function Fade({ children, delay = 0, className = '' }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease, delay }} className={className}>
+    <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.55, ease, delay }} className={className}>
       {children}
     </motion.div>
   )
 }
 
-function TopNav({ page, setPage, event }) {
+function Letters({ text }) {
+  return text.split('').map((letter, index) => (
+    <motion.span key={index} className="inline-block" initial={{ opacity: 0, y: 48, rotateX: -40 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 0.7, delay: 0.15 + index * 0.09, ease }}>{letter}</motion.span>
+  ))
+}
+
+function useTilt() {
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  const rotateX = useTransform(y, [-0.5, 0.5], [6, -6])
+  const rotateY = useTransform(x, [-0.5, 0.5], [-6, 6])
+  const onMove = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    x.set((event.clientX - rect.left) / rect.width - 0.5)
+    y.set((event.clientY - rect.top) / rect.height - 0.5)
+  }
+  const onLeave = () => { x.set(0); y.set(0) }
+  return { rotateX, rotateY, onMove, onLeave }
+}
+
+function ScoreRing({ value, children }) {
+  const radius = 88
+  const length = 2 * Math.PI * radius
+  const ratio = Math.min(1, Math.max(0, ((value ?? 40) - 40) / 30))
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-6 px-6 md:px-12 py-3 bg-petrol/95 text-cream backdrop-blur border-b border-cream/10">
+    <div className="relative grid place-items-center w-[240px] h-[240px] shrink-0">
+      <svg viewBox="0 0 200 200" className="absolute inset-0 w-full h-full -rotate-90">
+        <circle cx="100" cy="100" r={radius} fill="none" stroke="rgb(23 46 50 / 10%)" strokeWidth="10" />
+        <motion.circle cx="100" cy="100" r={radius} fill="none" stroke="var(--color-gold)" strokeWidth="10" strokeLinecap="round" strokeDasharray={length} initial={{ strokeDashoffset: length }} animate={{ strokeDashoffset: length * (1 - ratio) }} transition={{ duration: 1.4, ease, delay: 0.3 }} style={{ filter: 'drop-shadow(0 0 10px rgb(212 185 120 / 70%))' }} />
+      </svg>
+      <div className="relative text-center">{children}</div>
+    </div>
+  )
+}
+
+function ScenarioPanel({ state, event, decisions, setPage }) {
+  const measures = state?.measures ?? []
+  const available = (state?.budget ?? 100) - (event?.budget_penalty ?? 0)
+  const cost = decisions.reduce((sum, item) => sum + (measures.find((measure) => measure.id === item.measure_id)?.cost ?? 0), 0)
+  return (
+    <motion.aside initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.9, ease }} className="hidden lg:block absolute right-11 top-24 z-20 w-[300px] rounded-2xl border border-cream/20 bg-cream/10 backdrop-blur-xl p-5 text-cream shadow-[0_20px_60px_rgb(16_47_53/40%)]">
+      <p className="eyebrow text-gold mb-1">Ваш сценарий</p>
+      <div className="flex items-baseline justify-between mb-3"><span className="text-sm text-cream/75">Бюджет</span><span className="display text-[28px] tabular">{num(cost)} / {num(available)}</span></div>
+      <div className="h-1.5 rounded-full bg-cream/15 overflow-hidden mb-4"><motion.div className="h-full bg-gold rounded-full" animate={{ width: `${Math.min(100, (cost / available) * 100)}%` }} transition={{ duration: 0.5, ease }} /></div>
+      <ol className="list-none m-0 p-0 grid gap-1.5 mb-4">
+        {Array.from({ length: 5 }, (_, index) => { const item = decisions[index]; const measure = item && measures.find((entry) => entry.id === item.measure_id); return (
+          <li key={index} className={`flex items-center gap-2 text-[13px] rounded-lg px-2.5 py-1.5 border ${item ? 'border-cream/25 bg-cream/10' : 'border-dashed border-cream/25 text-cream/55'}`}><span className={`w-5 h-5 rounded-full grid place-items-center text-[11px] font-bold shrink-0 ${item ? 'bg-gold text-ink' : 'bg-cream/15'}`}>{index + 1}</span><span className="truncate">{measure ? measure.name : 'Свободный слот'}</span></li>
+        ) })}
+      </ol>
+      <button onClick={() => setPage('decisions')} className="btn btn-gold w-full min-h-[42px]">{decisions.length ? 'Продолжить' : 'Собрать сценарий'} <ArrowRight size={16} /></button>
+    </motion.aside>
+  )
+}
+
+function TopNav({ page, setPage, event }) {
+  const { scrollY } = useScroll()
+  const [scrolled, setScrolled] = useState(false)
+  useMotionValueEvent(scrollY, 'change', (latest) => setScrolled(latest > 40))
+  return (
+    <header className={`sticky top-0 z-30 flex items-center gap-6 px-6 md:px-12 py-3 text-cream transition-all duration-500 ${scrolled ? 'bg-petrol/85 backdrop-blur-xl shadow-[0_10px_40px_rgb(16_47_53/30%)] border-b border-cream/10' : 'bg-petrol/60 backdrop-blur-md border-b border-transparent'}`}>
       <button onClick={() => setPage('city')} className="flex items-center gap-2 font-bold text-[13px] leading-tight text-left">
         <Leaf className="text-gold" size={26} />
         <span>Аким<br />на 5 часов</span>
@@ -47,21 +104,24 @@ function TopNav({ page, setPage, event }) {
   )
 }
 
-function Hero({ state, result, event, setPage, pending }) {
+function Hero({ state, result, event, setPage, pending, decisions }) {
   const score = result?.simulation?.score ?? state?.base_score
   const alive = Boolean(result && result.simulation.delta > 0)
   const budget = (state?.budget ?? 100) - (event?.budget_penalty ?? 0)
+  const { scrollY } = useScroll()
+  const parallax = useTransform(scrollY, [0, 700], [0, 140])
   return (
     <section className="relative overflow-hidden rounded-[20px] bg-petrol text-cream shadow-[0_12px_36px_rgb(16_47_53/8%)] min-h-[560px]">
-      <motion.img src="/app/assets/hero-city.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-[62%_55%]" initial={{ scale: 1.06, filter: 'saturate(0.82) brightness(0.72)' }} animate={{ scale: 1, filter: pending ? 'saturate(0.7) brightness(0.65)' : alive ? 'saturate(1.05) brightness(1)' : 'saturate(0.82) brightness(0.78)' }} transition={{ duration: 1.4, ease }} />
+      <motion.div className="absolute inset-[-10%_0]" style={{ y: parallax }}>
+        <motion.img src="/app/assets/hero-city.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-[62%_55%]" initial={{ scale: 1, filter: 'saturate(0.82) brightness(0.72)' }} animate={{ scale: [1, 1.08], filter: pending ? 'saturate(0.7) brightness(0.65)' : alive ? 'saturate(1.05) brightness(1)' : 'saturate(0.82) brightness(0.78)' }} transition={{ scale: { duration: 20, ease: 'linear', repeat: Infinity, repeatType: 'mirror' }, filter: { duration: 1.4, ease } }} />
+      </motion.div>
       <motion.div className="absolute inset-0 pointer-events-none mix-blend-screen" style={{ background: 'radial-gradient(ellipse 70% 60% at 68% 42%, rgb(212 185 120 / 40%), transparent 70%)' }} animate={{ opacity: alive ? 1 : 0 }} transition={{ duration: 1.2, delay: 0.4, ease }} />
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(90deg, rgb(16 47 53 / 85%) 0%, rgb(16 47 53 / 45%) 38%, transparent 62%)' }} />
       <div className="absolute inset-0 pointer-events-none opacity-15" style={{ backgroundImage: 'linear-gradient(rgb(247 243 233 / 40%) 1px, transparent 1px), linear-gradient(90deg, rgb(247 243 233 / 40%) 1px, transparent 1px)', backgroundSize: '96px 96px', maskImage: 'radial-gradient(ellipse at 70% 30%, #000 20%, transparent 70%)' }} />
-      <motion.div aria-hidden className="display absolute left-6 md:left-11 top-6 md:top-12 text-cream leading-[0.9] select-none pointer-events-none" style={{ fontSize: 'clamp(80px, 13vw, 200px)', letterSpacing: '-0.02em', textShadow: '0 10px 40px rgb(16 47 53 / 60%)' }} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, ease }}>
-        АСТАНА
-      </motion.div>
+      <div aria-hidden className="display absolute left-6 md:left-11 top-6 md:top-12 text-cream leading-[0.9] select-none pointer-events-none" style={{ fontSize: 'clamp(80px, 13vw, 200px)', letterSpacing: '-0.02em', textShadow: '0 10px 40px rgb(16 47 53 / 60%)', perspective: '600px' }}>
+        <Letters text="АСТАНА" />
+      </div>
       <motion.img src="/app/assets/bayterek-cutout.png" alt="" className="absolute -top-[4%] h-[118%] w-auto pointer-events-none" style={{ right: 'clamp(6%, 16vw, 22%)', filter: 'drop-shadow(0 20px 40px rgb(16 47 53 / 70%))' }} initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.2, ease }} />
-      <div id="city-3d" className="absolute right-0 top-0 w-full md:w-[55%] h-[60vh] max-h-full z-[5] pointer-events-none [&>canvas]:pointer-events-auto" aria-hidden="true" />
       <div className="relative z-10 max-w-[560px] px-6 md:px-11 pt-[clamp(180px,29vw,300px)] pb-10">
         <Fade delay={0.5}><h1 className="display text-[clamp(30px,3.4vw,46px)] leading-[1.05] mb-3">Город начинается<br />с ваших решений</h1></Fade>
         <Fade delay={0.6}><p className="text-cream/80 max-w-[420px] mb-6">Реальный город. Реальные вызовы.<br />Попробуйте, каким будет завтра.</p></Fade>
@@ -80,7 +140,8 @@ function Hero({ state, result, event, setPage, pending }) {
         </Fade>
         {pending && <p className="mt-4 text-gold text-sm flex items-center gap-2"><RefreshCw size={14} className="animate-spin" /> Считаем результат…</p>}
       </div>
-      <p aria-hidden className="absolute right-6 md:right-11 top-8 md:top-16 text-right text-[11px] tracking-[0.24em] uppercase leading-[1.7] text-cream/80">Большие<br />возможности<br />начинаются<br />здесь</p>
+      <ScenarioPanel state={state} event={event} decisions={decisions} setPage={setPage} />
+      <p aria-hidden className="absolute right-6 md:right-11 top-8 md:top-16 lg:hidden text-right text-[11px] tracking-[0.24em] uppercase leading-[1.7] text-cream/80">Большие<br />возможности<br />начинаются<br />здесь</p>
       <p aria-hidden className="absolute right-6 md:right-11 bottom-6 md:bottom-10 text-right text-[11px] tracking-[0.24em] uppercase leading-[1.7] text-cream/80">Астана<br />Казахстан</p>
     </section>
   )
@@ -100,10 +161,10 @@ function DistrictStrip({ state }) {
   )
 }
 
-function CityScreen({ state, result, event, setPage, pending }) {
+function CityScreen({ state, result, event, setPage, pending, decisions }) {
   return (
     <div>
-      <Hero state={state} result={result} event={event} setPage={setPage} pending={pending} />
+      <Hero state={state} result={result} event={event} setPage={setPage} pending={pending} decisions={decisions} />
       <DistrictStrip state={state} />
       <div className="flex items-end justify-between gap-6 mb-6">
         <div><p className="eyebrow mb-2">Астана сегодня</p><h2 className="display text-[28px]">Пять районов — один город</h2></div>
@@ -140,13 +201,17 @@ function CityScreen({ state, result, event, setPage, pending }) {
 function MeasureCard({ measure, decision, districts, onToggle, onDistrict, index }) {
   const selected = Boolean(decision)
   const effects = Object.entries(measure.effects).map(([id, value]) => `${LABELS[id]} ${value > 0 ? '+' : ''}${num(value)}`).join(' · ')
+  const tilt = useTilt()
   return (
-    <motion.article layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: index * 0.04, ease }} className={`card overflow-hidden flex flex-col transition-shadow ${selected ? 'ring-2 ring-gold shadow-[0_0_0_2px_var(--color-gold)]' : 'hover:-translate-y-0.5'}`}>
-      <div className="aspect-[16/8] bg-cover bg-center border-b border-line" style={{ backgroundImage: `linear-gradient(160deg, ${DIRECTION_COLORS[measure.direction]}33, transparent 60%), url('/app/assets/dir-${DIRECTION_PHOTOS[measure.direction]}.jpg')` }} />
+    <motion.article initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} whileHover={{ y: -6 }} onMouseMove={tilt.onMove} onMouseLeave={tilt.onLeave} style={{ rotateX: tilt.rotateX, rotateY: tilt.rotateY, transformPerspective: 900 }} transition={{ duration: 0.5, delay: (index % 6) * 0.06, ease }} className={`group card overflow-hidden flex flex-col will-change-transform ${selected ? 'selected-glow' : 'hover:shadow-[0_24px_60px_rgb(16_47_53/16%)]'}`}>
+      <div className="aspect-[16/8] overflow-hidden border-b border-line relative">
+        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out group-hover:scale-110" style={{ backgroundImage: `url('/app/assets/dir-${DIRECTION_PHOTOS[measure.direction]}.jpg')` }} />
+        <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${DIRECTION_COLORS[measure.direction]}55, transparent 60%)` }} />
+      </div>
       <label className="flex items-start gap-3 p-4 pb-0 cursor-pointer">
         <span className="display text-[17px] leading-tight flex-1">{measure.name}</span>
         <input type="checkbox" checked={selected} onChange={onToggle} className="sr-only" />
-        <span className={`w-[26px] h-[26px] rounded-full border-2 grid place-items-center shrink-0 transition ${selected ? 'bg-gold border-gold' : 'border-line bg-surface'}`}>{selected && <Check size={14} className="text-ink" strokeWidth={3} />}</span>
+        <motion.span animate={selected ? { scale: [1, 1.25, 1] } : { scale: 1 }} transition={{ duration: 0.4 }} className={`w-[26px] h-[26px] rounded-full border-2 grid place-items-center shrink-0 transition ${selected ? 'bg-gold border-gold' : 'border-line bg-surface group-hover:border-gold'}`}>{selected && <Check size={14} className="text-ink" strokeWidth={3} />}</motion.span>
       </label>
       <div className="flex justify-between gap-4 px-4 pt-2 text-[13px] text-muted"><span>{measure.id} · {measure.type === 'C' ? 'Весь город' : 'Один район'}</span><strong className="text-ink">{num(measure.cost)} ед. бюджета</strong></div>
       <p className="px-4 pt-2 text-sm m-0">{effects}</p>
@@ -186,7 +251,7 @@ function BudgetPanel({ state, event, decisions, validation, onCalculate, calcula
           const item = decisions[index]
           const measure = item && measures.find((entry) => entry.id === item.measure_id)
           return (
-            <motion.li key={index} layout className={`flex items-center gap-3 min-h-[46px] px-3 py-2 rounded-lg text-[13px] border ${item ? 'border-solid bg-cream/10 border-cream/25' : 'border-dashed border-cream/30 text-cream/60'}`}>
+            <motion.li key={item ? item.measure_id : `empty-${index}`} layout initial={{ opacity: 0, scale: 0.85, x: -30 }} animate={{ opacity: 1, scale: 1, x: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 22 }} className={`flex items-center gap-3 min-h-[46px] px-3 py-2 rounded-lg text-[13px] border ${item ? 'border-solid bg-cream/10 border-cream/25' : 'border-dashed border-cream/30 text-cream/60'}`}>
               <span className={`w-[26px] h-[26px] rounded-full grid place-items-center font-bold shrink-0 ${item ? 'bg-gold text-ink' : 'bg-cream/15'}`}>{item ? index + 1 : <Plus size={14} />}</span>
               {item ? <span className="flex flex-col leading-tight min-w-0"><strong className="font-semibold truncate">{measure?.name ?? item.measure_id}</strong><small className="text-cream/65">{measure?.type === 'C' ? 'весь город' : item.district ?? 'район не выбран'} · {num(measure?.cost)} ед.</small></span> : <span>Выберите решение</span>}
             </motion.li>
@@ -243,9 +308,19 @@ function ResultScreen({ state, result, event, explaining, applyRecommendation, s
           <p className="eyebrow mb-2">Астана сегодня</p>
           <h2 className="display text-[clamp(36px,4.6vw,64px)] leading-[1.05] mb-3">{positive ? 'Город стал лучше' : 'Город изменился'}</h2>
           <p className="text-muted mb-4">{positive ? 'Ваши решения меняют реальность.' : 'Балл не вырос — посмотрите, что можно сделать иначе.'}</p>
-          <div className="flex items-baseline gap-4 flex-wrap">
-            <Counter value={simulation.score} className="display text-[clamp(56px,7vw,96px)] leading-none" />
-            <motion.span initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1.2, duration: 0.4, ease }} className={`px-4 py-2 rounded-lg font-bold text-lg ${positive ? 'bg-gold text-ink' : 'bg-negative-bg text-negative'}`}>{signed(simulation.delta)} балла</motion.span>
+          <div className="flex items-center gap-6 flex-wrap">
+            <ScoreRing value={simulation.score}><Counter value={simulation.score} className="display text-[56px] leading-none block" /><span className="text-[11px] uppercase tracking-widest text-muted">Score</span></ScoreRing>
+            <div>
+              <motion.span initial={{ opacity: 0, scale: 0.5, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 1.2 }} className={`inline-block px-5 py-3 rounded-xl font-bold text-2xl ${positive ? 'bg-gold text-ink' : 'bg-negative-bg text-negative'}`}>{signed(simulation.delta)} балла</motion.span>
+              <ul className="list-none m-0 mt-5 p-0 grid gap-2 w-[280px] max-w-full">
+                {simulation.districts.map((district, index) => (
+                  <li key={district.name} className="text-[12px]">
+                    <div className="flex justify-between"><span>{district.name}</span><span className="tabular"><span className="text-muted">{fmt(district.score_before)}</span> → <strong>{fmt(district.score_after)}</strong></span></div>
+                    <div className="h-1.5 rounded-full bg-surface-muted overflow-hidden mt-1"><motion.div className="h-full rounded-full" style={{ background: district.score_after < 55 ? 'var(--color-dir-s)' : 'var(--color-positive)' }} initial={{ width: `${district.score_before}%` }} animate={{ width: `${district.score_after}%` }} transition={{ duration: 1, delay: 1.4 + index * 0.12, ease }} /></div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
           <p className="text-muted text-sm mt-3">{fmt(simulation.base_score)} → {fmt(simulation.score)} · бюджет {num(simulation.total_cost)} из {num(simulation.budget)} · критических показателей: {simulation.n_crit} · самый слабый район: {simulation.min_district.name} ({fmt(simulation.min_district.score)})</p>
           {event && <p className="text-sm text-warning mt-2">Событие «{event.name}» учтено: базовый Score и показатели «до» уже с его эффектом.</p>}
@@ -357,12 +432,18 @@ function AgentScreen({ event, agent, runAgent, applyPlan, state }) {
           <p className="text-sm text-muted mt-3">Опишите приоритеты. AI предложит программу, а движок проверит ограничения и рассчитает результат — каждый шаг ниже настоящий.{event && <> Событие «{event.name}» учитывается.</>}</p>
           <button onClick={() => runAgent(goal)} disabled={agent.busy} className="btn btn-gold mt-4">{agent.busy ? <><RefreshCw size={16} className="animate-spin" /> Проверяем варианты…</> : <><Sparkles size={16} /> Спросить AI-акима</>}</button>
           {agent.error && <p className="mt-4 text-negative text-sm">{agent.error}</p>}
+          {agent.busy && (
+            <div className="mt-8" aria-live="polite">
+              <p className="flex items-center gap-3 text-sm font-semibold text-petrol-soft mb-4"><span className="relative flex h-3 w-3"><span className="absolute inline-flex h-full w-full rounded-full bg-gold opacity-75 animate-ping" /><span className="relative inline-flex rounded-full h-3 w-3 bg-gold" /></span>AI-аким анализирует город…</p>
+              <div className="grid gap-2">{[0, 1, 2].map((index) => <div key={index} className="shimmer h-[58px] rounded-[14px]" style={{ animationDelay: `${index * 0.15}s` }} />)}</div>
+            </div>
+          )}
           {plan && (
             <div className="mt-8">
               <p className="eyebrow mb-3">Ход работы · {plan.steps.length} шагов · {plan.source === 'ai' ? 'план собрала модель' : 'план собран движком'}</p>
               <ol className="list-none m-0 p-0 grid gap-2">
                 {plan.steps.map((step, index) => (
-                  <motion.li key={index} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05, ease }} className="card px-4 py-3 text-sm flex gap-3 items-start">
+                  <motion.li key={index} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.14, duration: 0.4, ease }} className="card px-4 py-3 text-sm flex gap-3 items-start">
                     <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold shrink-0 ${step.action === 'simulate' ? 'bg-dir-e/50' : 'bg-dir-t/50'}`}>{step.action}</span>
                     <span><span className="text-muted">{step.decisions.map((item) => item.measure_id).join(', ')}</span><br />{step.summary}</span>
                   </motion.li>
@@ -500,7 +581,7 @@ export default function App() {
         {!state && !notice && <p className="text-muted">Загружаем данные города…</p>}
         <AnimatePresence initial={false}>
           <motion.div key={page} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3, ease }}>
-            {page === 'city' && <CityScreen state={state} result={result} event={event} setPage={setPage} pending={calculating} />}
+            {page === 'city' && <CityScreen state={state} result={result} event={event} setPage={setPage} pending={calculating} decisions={decisions} />}
             {page === 'decisions' && <DecisionsScreen state={state} event={event} decisions={decisions} setDecisions={setDecisions} validation={validation} onCalculate={calculate} calculating={calculating} />}
             {page === 'result' && <ResultScreen state={state} result={result} event={event} explaining={explaining} applyRecommendation={applyRecommendation} setPage={setPage} stale={stale} />}
             {page === 'events' && <EventsScreen events={events} event={event} selectEvent={selectEvent} state={state} />}
