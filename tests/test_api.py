@@ -5,8 +5,19 @@ from fastapi.testclient import TestClient
 
 from api.main import app
 
-HAS_EVENTS_ENDPOINT = any(getattr(route, "path", None) == "/api/events" for route in app.routes)
-EVENTS_REASON = "В api/main.py ещё нет GET /api/events и параметра event_id"
+POST_PATHS = ["/api/validate", "/api/simulate", "/api/explain"]
+
+BROKEN_DECISIONS = [
+    {},
+    {"decisions": "M7"},
+    {"decisions": 5},
+    {"decisions": None},
+    {"decisions": {"measure_id": "M7"}},
+    {"decisions": [[{"measure_id": "M7"}]]},
+    {"decisions": [True, False]},
+]
+
+BROKEN_EVENT_IDS = ["EV9", "", 5, 3.5, [], {"id": "EV1"}]
 
 CONTROL_SET = [
     {"measure_id": "M7", "district": "Нура"},
@@ -39,7 +50,7 @@ ANALYSIS_KEYS = ("summary", "strengths", "risks", "consequences", "tradeoffs", "
 def client():
     saved = os.environ.pop("OPENAI_API_KEY", None)
     try:
-        with TestClient(app) as test_client:
+        with TestClient(app, raise_server_exceptions=False) as test_client:
             yield test_client
     finally:
         if saved is not None:
@@ -175,26 +186,158 @@ def test_index_serves_interface(client):
     assert "Аким на 5 часов" in response.text
 
 
-@pytest.mark.skipif(not HAS_EVENTS_ENDPOINT, reason=EVENTS_REASON)
 def test_events_endpoint_lists_five_events(client):
     response = client.get("/api/events")
     assert response.status_code == 200
     body = response.json()
     assert [item["id"] for item in body] == ["EV1", "EV2", "EV3", "EV4", "EV5"]
+    districts = {"Есиль", "Алматы", "Сарыарка", "Байконур", "Нура"}
     for item in body:
+        assert item["name"] and item["description"]
         assert 5 <= item["budget_penalty"] <= 15
+        assert item["district"] is None or item["district"] in districts
+        assert item["effects"] and all(shift < 0 for shift in item["effects"].values())
 
 
-@pytest.mark.skipif(not HAS_EVENTS_ENDPOINT, reason=EVENTS_REASON)
-def test_simulate_with_event_lowers_base_score(client):
-    body = client.post("/api/simulate", json={"decisions": CONTROL_SET, "event_id": "EV3"}).json()
-    assert body["event"]["id"] == "EV3"
-    assert body["base_score"] < 52.56
+def test_validate_with_event_reduces_budget(client):
+    body = client.post("/api/validate", json={"decisions": CONTROL_SET, "event_id": "EV3"}).json()
+    assert body["valid"] is True
     assert body["budget"] == 95
+    assert body["budget_left"] == 0
 
 
-@pytest.mark.skipif(not HAS_EVENTS_ENDPOINT, reason=EVENTS_REASON)
 def test_validate_with_heavy_event_rejects_expensive_set(client):
     body = client.post("/api/validate", json={"decisions": CONTROL_SET, "event_id": "EV1"}).json()
     assert body["valid"] is False
     assert body["budget"] == 88
+    assert any("Прорыв теплосети" in error for error in body["errors"])
+
+
+def test_simulate_with_event_lowers_base_score(client):
+    response = client.post("/api/simulate", json={"decisions": CONTROL_SET, "event_id": "EV3"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["event"]["id"] == "EV3"
+    assert body["base_score"] < 52.56
+    assert body["budget"] == 95
+    assert_two_decimals(body)
+
+
+def test_simulate_rejects_set_over_event_budget(client):
+    response = client.post("/api/simulate", json={"decisions": CONTROL_SET, "event_id": "EV1"})
+    assert response.status_code == 422
+    assert any("бюджет 88" in error for error in response.json()["detail"]["errors"])
+
+
+def test_explain_with_event(client):
+    response = client.post("/api/explain", json={"decisions": CONTROL_SET, "event_id": "EV3"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "fallback"
+    assert set(body["analysis"]) >= set(ANALYSIS_KEYS)
+    assert body["simulation"]["event"]["id"] == "EV3"
+    assert_two_decimals(body)
+
+
+def test_compare_scenarios_with_different_events(client):
+    payload = {
+        "scenarios": [
+            {"name": "Без события", "decisions": CHEAP_SET},
+            {"name": "Смог", "decisions": CHEAP_SET, "event_id": "EV2"},
+        ]
+    }
+    response = client.post("/api/compare", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    first, second = body["results"]
+    assert first["simulation"]["event"] is None
+    assert second["simulation"]["event"]["id"] == "EV2"
+    assert second["simulation"]["base_score"] < first["simulation"]["base_score"]
+
+
+def test_optimize_with_event_respects_reduced_budget(client):
+    response = client.get("/api/optimize", params={"top": 3, "event_id": "EV5"})
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 3
+    for item in body:
+        assert item["total_cost"] <= 85
+        check = client.post(
+            "/api/validate", json={"decisions": item["decisions"], "event_id": "EV5"}
+        ).json()
+        assert check["valid"] is True
+    assert body[0]["score"] != client.get("/api/optimize", params={"top": 1}).json()[0]["score"]
+
+
+@pytest.mark.parametrize("path", POST_PATHS)
+def test_post_endpoints_reject_empty_body(client, path):
+    response = client.post(path, content=b"")
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("path", POST_PATHS)
+def test_post_endpoints_reject_non_json_body(client, path):
+    response = client.post(path, content="просто текст", headers={"Content-Type": "application/json"})
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("path", POST_PATHS)
+@pytest.mark.parametrize("payload", BROKEN_DECISIONS)
+def test_post_endpoints_reject_broken_decisions(client, path, payload):
+    response = client.post(path, json=payload)
+    assert response.status_code == 422
+    assert response.json()["detail"]
+
+
+@pytest.mark.parametrize("path", POST_PATHS)
+def test_post_endpoints_ignore_unknown_fields(client, path):
+    response = client.post(path, json={"decisions": CONTROL_SET, "junk": 1, "score": 99})
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize("path", POST_PATHS)
+@pytest.mark.parametrize("event_id", BROKEN_EVENT_IDS)
+def test_post_endpoints_reject_broken_event_id(client, path, event_id):
+    response = client.post(path, json={"decisions": CONTROL_SET, "event_id": event_id})
+    assert response.status_code == 422
+
+
+def test_compare_rejects_broken_payloads(client):
+    assert client.post("/api/compare", content=b"").status_code == 422
+    assert client.post("/api/compare", content="текст", headers={"Content-Type": "application/json"}).status_code == 422
+    assert client.post("/api/compare", json={}).status_code == 422
+    assert client.post("/api/compare", json={"scenarios": None}).status_code == 422
+    assert client.post("/api/compare", json={"scenarios": "abc"}).status_code == 422
+    assert client.post("/api/compare", json={"scenarios": [{"decisions": CONTROL_SET}]}).status_code == 422
+    assert client.post("/api/compare", json={"scenarios": [{"name": "A", "decisions": [1, None]}]}).status_code == 422
+    assert client.post(
+        "/api/compare", json={"scenarios": [{"name": "A", "decisions": CONTROL_SET, "event_id": "EV9"}]}
+    ).status_code == 422
+
+
+def test_compare_accepts_empty_scenario_list(client):
+    response = client.post("/api/compare", json={"scenarios": []})
+    assert response.status_code == 200
+    assert response.json()["results"] == []
+
+
+@pytest.mark.parametrize("top", ["0", "101", "-5", "abc", "1.5", ""])
+def test_optimize_rejects_broken_top(client, top):
+    assert client.get(f"/api/optimize?top={top}").status_code == 422
+
+
+@pytest.mark.parametrize("event_id", ["EV9", "", "5"])
+def test_optimize_rejects_broken_event_id(client, event_id):
+    assert client.get(f"/api/optimize?top=3&event_id={event_id}").status_code == 422
+
+
+def test_no_endpoint_answers_with_server_error(client):
+    requests = [("GET", "/api/state", {}), ("GET", "/api/events", {}), ("GET", "/api/optimize?top=0", {})]
+    for path in POST_PATHS:
+        requests.append(("POST", path, {"content": b""}))
+        requests.append(("POST", path, {"json": {"decisions": [1, None, {"measure_id": ["M1"]}]}}))
+        requests.append(("POST", path, {"json": {"decisions": CONTROL_SET, "event_id": "EV9"}}))
+    requests.append(("POST", "/api/compare", {"json": {"scenarios": [{"name": "A", "decisions": "x"}]}}))
+    for method, path, kwargs in requests:
+        response = client.request(method, path, **kwargs)
+        assert response.status_code < 500, (method, path, response.status_code, response.text[:200])
