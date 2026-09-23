@@ -17,6 +17,7 @@ load_dotenv()
 app = FastAPI()
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 WEB_V2_DIR = Path(__file__).resolve().parent.parent / "web-v2"
+WEB_REACT_DIR = Path(__file__).resolve().parent.parent / "web-react" / "dist"
 
 
 def round_floats(value):
@@ -142,6 +143,9 @@ def run_optimizer(top: int = 5, event_id: str | None = None):
     check_event(event_id)
     return round_floats(optimize(top=top, event_id=event_id))
 
+
+if WEB_REACT_DIR.is_dir():
+    app.mount("/app", StaticFiles(directory=WEB_REACT_DIR, html=True), name="web-react")
 
 if WEB_V2_DIR.is_dir():
     app.mount("/v2", StaticFiles(directory=WEB_V2_DIR, html=True), name="web-v2")
