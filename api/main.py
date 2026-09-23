@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.responses import FileResponse, JSONResponse
 
-from engine import load_data, validate, simulate, optimize
+from engine import load_data, validate, simulate, optimize, list_events, get_event
 from ai.advisor import recommendations
 from ai.explainer import explain_simulation, explain_comparison
 
@@ -29,13 +29,24 @@ def round_floats(value):
     return value
 
 
+def check_event(event_id):
+    if event_id is None:
+        return
+    try:
+        get_event(event_id)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
 class DecisionsRequest(BaseModel):
     decisions: list[dict]
+    event_id: str | None = None
 
 
 class Scenario(BaseModel):
     name: str
     decisions: list[dict]
+    event_id: str | None = None
 
 
 class CompareRequest(BaseModel):
@@ -61,27 +72,35 @@ def state():
     return round_floats(result)
 
 
+@app.get("/api/events")
+def events():
+    return list_events()
+
+
 @app.post("/api/validate")
 def validate_decisions(request: DecisionsRequest):
-    return round_floats(validate(request.decisions))
+    check_event(request.event_id)
+    return round_floats(validate(request.decisions, event_id=request.event_id))
 
 
 @app.post("/api/simulate")
 def run_simulation(request: DecisionsRequest):
-    result = validate(request.decisions)
+    check_event(request.event_id)
+    result = validate(request.decisions, event_id=request.event_id)
     if not result.get("valid"):
         raise HTTPException(status_code=422, detail={"valid": False, "errors": result.get("errors", [])})
-    return round_floats(simulate(request.decisions))
+    return round_floats(simulate(request.decisions, event_id=request.event_id))
 
 
 @app.post("/api/explain")
 def explain(request: DecisionsRequest):
-    validation = validate(request.decisions)
+    check_event(request.event_id)
+    validation = validate(request.decisions, event_id=request.event_id)
     if not validation.get("valid"):
         raise HTTPException(status_code=422, detail={"valid": False, "errors": validation.get("errors", [])})
-    simulation = simulate(request.decisions)
+    simulation = simulate(request.decisions, event_id=request.event_id)
     analysis, source = explain_simulation(round_floats(simulation))
-    analysis["recommendations"] = recommendations(request.decisions, simulation)
+    analysis["recommendations"] = recommendations(request.decisions, simulation, request.event_id)
     return round_floats({"simulation": simulation, "analysis": analysis, "source": source})
 
 
@@ -89,19 +108,21 @@ def explain(request: DecisionsRequest):
 def compare(request: CompareRequest):
     results = []
     for scenario in request.scenarios:
-        validation = validate(scenario.decisions)
+        check_event(scenario.event_id)
+        validation = validate(scenario.decisions, event_id=scenario.event_id)
         if not validation.get("valid"):
             raise HTTPException(status_code=422, detail={"valid": False, "errors": validation.get("errors", []), "scenario": scenario.name})
-        results.append({"name": scenario.name, "simulation": simulate(scenario.decisions)})
+        results.append({"name": scenario.name, "simulation": simulate(scenario.decisions, event_id=scenario.event_id)})
     analysis, source = explain_comparison(round_floats(results))
     return round_floats({"results": results, "analysis": analysis, "source": source})
 
 
 @app.get("/api/optimize")
-def run_optimizer(top: int = 5):
+def run_optimizer(top: int = 5, event_id: str | None = None):
     if top < 1 or top > 100:
         raise HTTPException(status_code=422, detail="Параметр top должен быть от 1 до 100")
-    return round_floats(optimize(top=top))
+    check_event(event_id)
+    return round_floats(optimize(top=top, event_id=event_id))
 
 
 if WEB_DIR.is_dir():
