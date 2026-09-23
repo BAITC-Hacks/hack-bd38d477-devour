@@ -78,7 +78,7 @@ flowchart LR
 ./run.sh
 ```
 
-Скрипт создаёт `.venv`, если её нет, ставит зависимости из `requirements.txt`, копирует `.env.example` в `.env`, если `.env` отсутствует, и запускает `uvicorn api.main:app` на http://localhost:8000. Порт переопределяется: `PORT=9000 ./run.sh`.
+Скрипт создаёт `.venv`, если её нет, ставит зависимости из `requirements.txt`, копирует `.env.example` в `.env`, если `.env` отсутствует, и запускает `uvicorn api.main:app` на http://localhost:8000/app/. Порт переопределяется: `PORT=9000 ./run.sh`.
 
 Вручную:
 
