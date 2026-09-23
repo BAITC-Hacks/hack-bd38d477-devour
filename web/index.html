@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123d36">
+  <title>Аким на 5 часов — Астана</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="header"><a class="brand" href="#city"><span class="brand-icon">А</span><span>Аким на 5 часов<small>Лаборатория городских решений</small></span></a><span class="city-label">АСТАНА · ГОРИЗОНТ 8 КВАРТАЛОВ</span></header>
+  <main>
+    <div class="hero"><div><p class="eyebrow">ВАШ ГОРОД. ВАШИ РЕШЕНИЯ.</p><h1>Каким станет город<br>после ваших решений?</h1><p>Выберите 5 мер. Распределите бюджет. Узнайте, как изменится качество жизни в пяти районах Астаны.</p></div><div class="hero-score"><span>Базовый индекс качества жизни</span><strong id="base-score">—</strong><span>Astana Quality of Life Score</span></div></div>
+    <nav aria-label="Разделы симулятора"><button data-page="city" class="active">01 · Город</button><button data-page="decisions">02 · Решения</button><button data-page="result">03 · Результат</button><button data-page="compare">04 · Сравнение</button><button data-page="optimizer">05 · Оптимизатор</button><button data-page="events">06 · События</button></nav>
+    <div id="notice" role="alert" hidden></div>
+    <p id="loading" role="status">Загружаем данные города…</p>
+    <section id="city" class="page"><div class="section-heading"><div><p class="eyebrow">ТОЧКА ОТСЧЁТА</p><h2>Пять районов — один город</h2></div><span class="legend">Красный: показатель ниже 40</span></div><div id="districts" class="district-grid"></div><div class="note">Все показатели от 0 до 100: больше — лучше. Индекс учитывает среднюю оценку, самый слабый район и количество критических показателей.</div></section>
+    <section id="decisions" class="page" hidden><div class="section-heading"><div><p class="eyebrow">СОБЕРИТЕ СВОЮ ПРОГРАММУ</p><h2>Пять шагов к лучшему городу</h2></div><button id="clear" class="secondary">Сбросить выбор</button></div><div class="decision-layout"><div id="catalog"></div><aside class="budget-panel"><h3>Ваша программа</h3><div class="budget-number"><strong id="cost">0</strong><span> / <span id="budget">100</span></span></div><progress id="budget-bar" value="0" max="100"></progress><p>Осталось: <strong id="remaining">100</strong></p><p>Выбрано мер: <strong id="count">0 / 5</strong></p><p class="muted">Не больше двух мер из одного направления. Для районных мер выберите район.</p><div id="validation" aria-live="polite"></div><button id="calculate" disabled>Рассчитать результат →</button></aside></div></section>
+    <section id="result" class="page" hidden><div class="section-heading"><div><p class="eyebrow">ЭФФЕКТ ВАШЕЙ ПРОГРАММЫ</p><h2>Что изменится за 8 кварталов</h2></div></div><div id="result-content" class="empty">Выберите валидный набор из пяти мер и нажмите «Рассчитать».</div><div id="save-panel" class="panel" hidden><label for="scenario-name">Название сценария</label><div class="inline"><input id="scenario-name" maxlength="80" placeholder="Например, Забота о Нуре"><button id="save">Сохранить для сравнения</button></div><p id="save-status" role="status"></p></div></section>
+    <section id="compare" class="page" hidden><div class="section-heading"><div><p class="eyebrow">НАЙДИТЕ БАЛАНС</p><h2>Сравнение сценариев</h2></div><button id="compare-button" disabled>Сравнить сценарии</button></div><p class="muted">Сохраните от двух до трёх рассчитанных сценариев. Они хранятся в этой вкладке до перезагрузки страницы.</p><div id="saved" class="cards"></div><div id="comparison"></div></section>
+    <section id="optimizer" class="page" hidden><div class="section-heading"><div><p class="eyebrow">ПОМОЩЬ В ПЛАНИРОВАНИИ</p><h2>Лучшие наборы по Score</h2></div><button id="optimize">Найти лучший набор</button></div><p class="muted">Движок подберёт пять наборов с учётом бюджета и ограничений. AI не участвует в расчёте чисел.</p><div id="optimal" class="cards"></div></section>
+    <section id="events" class="page" hidden><p class="eyebrow">ГОРОДСКАЯ ПОВЕСТКА</p><h2>События</h2><div class="empty">События пока не реализованы в текущем API. Доступен базовый сценарий с бюджетом 100.</div></section>
+    <footer>Аким на 5 часов <span>Учебная модель · Числа считает движок, AI объясняет результат</span></footer>
+  </main>
+</body>
+</html>
