@@ -62,6 +62,24 @@ python3 -m uvicorn api.main:app --reload
 
 Откройте http://localhost:8000. Сборка фронтенда не требуется.
 
+### Через Docker
+
+Нужен только установленный Docker, Python на машине не требуется:
+
+```bash
+docker build -t akim-simulator .
+docker run --rm -p 8000:8000 akim-simulator
+```
+
+Откройте http://localhost:8000. Контейнер поднимает `uvicorn api.main:app` на `0.0.0.0:8000`, образ собирается на `python:3.12-slim`.
+
+Ключ OpenAI в образ не попадает: `.env` перечислен в `.dockerignore`, поэтому в собранном образе нет ни файла `.env`, ни переменной `OPENAI_API_KEY`. Без ключа расчёты работают полностью, анализ идёт через шаблонный разбор. Чтобы включить AI, ключ передаётся при запуске:
+
+```bash
+docker run --rm -p 8000:8000 --env-file .env akim-simulator
+docker run --rm -p 8000:8000 -e OPENAI_API_KEY=ваш_ключ akim-simulator
+```
+
 Для AI скопируйте `.env.example` в `.env` и задайте переменные:
 
 | Переменная | Назначение |
@@ -360,7 +378,16 @@ Score = 0.7 × D_avg + 0.3 × min(D_d) − N_crit
 .venv/bin/python -m pytest -q
 ```
 
-Всего 178 тестов. Для `tests/test_api.py` нужны установленные зависимости, поэтому запускать следует из виртуального окружения, созданного `./run.sh`, либо после `source .venv/bin/activate` командой `pytest -q`.
+Всего 178 тестов. Для `tests/test_api.py` нужны установленные зависимости, поэтому запускать следует из виртуального окружения, созданного `./run.sh`, либо после `source .venv/bin/activate` командой `python -m pytest -q`.
+
+Запускать нужно именно через `python -m pytest`: голый `pytest` не добавляет корень репозитория в `sys.path`, и сбор тестов падает с `ModuleNotFoundError: No module named 'engine'`.
+
+Те же тесты настроены в CI: `.github/workflows/tests.yml` на каждый push и pull request поднимает Python 3.12, ставит `requirements.txt` и выполняет `python -m pytest -q` с пустым `OPENAI_API_KEY`, так что проверяется именно ветка без AI. Эти же шаги воспроизводятся локально в чистом окружении:
+
+```bash
+docker run --rm -e OPENAI_API_KEY="" -v "$PWD":/src:ro -w /src python:3.12-slim \
+  sh -c "pip install -q -r requirements.txt && python -m pytest -q -p no:cacheprovider"
+```
 
 `tests/test_engine.py` — 99 тестов движка: три контрольных числа с допуском 0.01, отдельный тест на каждое из восьми правил валидации, независимость результата от порядка мер, корректность и кэширование оптимизатора с ограничением по времени, события (каталог, ошибка на неизвестный идентификатор, снижение базового Score каждым событием, отсутствие масштабирования эффектов лагом, отказ дорогого набора при штрафе бюджета) и неизменность всех старых чисел при вызовах без `event_id`.
 
