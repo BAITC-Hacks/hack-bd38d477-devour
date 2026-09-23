@@ -382,7 +382,9 @@ Score = 0.7 × D_avg + 0.3 × min(D_d) − N_crit
 
 Запускать нужно именно через `python -m pytest`: голый `pytest` не добавляет корень репозитория в `sys.path`, и сбор тестов падает с `ModuleNotFoundError: No module named 'engine'`.
 
-Те же тесты настроены в CI: `.github/workflows/tests.yml` на каждый push и pull request поднимает Python 3.12, ставит `requirements.txt` и выполняет `python -m pytest -q` с пустым `OPENAI_API_KEY`, так что проверяется именно ветка без AI. Эти же шаги воспроизводятся локально в чистом окружении:
+Те же тесты собраны в workflow `.github/workflows/tests.yml`: Python 3.12, установка `requirements.txt` и `python -m pytest -q` с пустым `OPENAI_API_KEY`, то есть проверяется именно ветка без AI. Запускается он вручную — вкладка **Actions** → workflow **tests** → **Run workflow**. Автоматического запуска на push и pull request нет намеренно: у организации заблокирован биллинг GitHub Actions, и автоматические прогоны падали бы красным статусом, не начав работу.
+
+Поэтому основная проверка — локальная. Те же шаги воспроизводятся в чистом окружении одной командой:
 
 ```bash
 docker run --rm -e OPENAI_API_KEY="" -v "$PWD":/src:ro -w /src python:3.12-slim \
