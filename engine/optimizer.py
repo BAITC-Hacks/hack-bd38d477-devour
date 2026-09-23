@@ -4,6 +4,7 @@ import itertools
 import math
 from functools import lru_cache
 
+from engine.events import event_penalty, resolve_event
 from engine.rules import district_names, load_data, measures_index
 from engine.scoring import indicator_ids, indicator_weights, simulate
 
@@ -21,7 +22,7 @@ def _assignment_masks(count):
     return tuple(result)
 
 
-def _precompute(data):
+def _precompute(data, event=None):
     keys = indicator_ids(data)
     weights = indicator_weights(data)
     horizon = data["horizon"]
@@ -32,11 +33,23 @@ def _precompute(data):
         for indicator, value in measure["effects"].items():
             vector[keys.index(indicator)] = value * factor
         effects[measure["id"]] = vector
+    base = [
+        [float(district["indicators"][key]) for key in keys] for district in data["districts"]
+    ]
+    if event is not None:
+        names = district_names(data)
+        targets = names if event["district"] is None else [event["district"]]
+        for target in targets:
+            if target not in names:
+                continue
+            position = names.index(target)
+            for indicator, shift in event["effects"].items():
+                base[position][keys.index(indicator)] += shift
     return (
         keys,
         [weights[key] for key in keys],
         [district["population"] for district in data["districts"]],
-        [[float(district["indicators"][key]) for key in keys] for district in data["districts"]],
+        base,
         effects,
     )
 
@@ -115,12 +128,13 @@ def _district_table(data, prepared, combo, regional, city, bits):
 
 
 @lru_cache(maxsize=None)
-def _search(limit):
+def _search(limit, event_id):
     data = load_data()
-    prepared = _precompute(data)
+    event = resolve_event(event_id)
+    prepared = _precompute(data, event)
     measures = measures_index(data)
     districts = district_names(data)
-    budget = data["budget"]
+    budget = data["budget"] - event_penalty(event)
     required = data["measures_required"]
     direction_limit = data["max_per_direction"]
     forbidden_pairs = [
@@ -176,7 +190,7 @@ def _search(limit):
             {"measure_id": measure_id, "district": placement.get(measure_id)}
             for measure_id in combo
         ]
-        result = simulate(decisions)
+        result = simulate(decisions, event_id)
         best.append(
             {
                 "decisions": decisions,
@@ -188,9 +202,10 @@ def _search(limit):
     return tuple(best)
 
 
-def optimize(top=5):
+def optimize(top=5, event_id=None):
     top = int(top)
     if top <= 0:
         return []
+    resolve_event(event_id)
     limit = CACHE_STEP * math.ceil(top / CACHE_STEP)
-    return [copy.deepcopy(item) for item in _search(limit)[:top]]
+    return [copy.deepcopy(item) for item in _search(limit, event_id)[:top]]
