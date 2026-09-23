@@ -7,9 +7,9 @@ AI-симулятор управления городом. Пользовате�
 Запуск: `pip install -r requirements.txt && uvicorn api.main:app --reload` → http://localhost:8000
 
 ## Структура и владельцы (трогать ТОЛЬКО свои файлы)
-- Агент 1 (движок): `engine/` (`__init__.py`, `data.json`, `rules.py`, `scoring.py`, `optimizer.py`), `tests/`
+- Агент 1 (движок): `engine/` (`__init__.py`, `data.json`, `rules.py`, `scoring.py`, `optimizer.py`), `tests/` (`test_engine.py`, `test_api.py`), `README.md`, `run.sh`
 - Агент 2 (API и AI): `api/`, `ai/`, `requirements.txt`, `.env.example`, `.gitignore`
-- Агент 3 (фронтенд и документация): `web/` (`index.html`, `app.js`, `styles.css`), `README.md`
+- Агент 3 (фронтенд): `web/` (`index.html`, `app.js`, `styles.css`)
   Нужно изменить чужой файл — остановись и напиши пользователю, что и зачем, в чужой файл не пиши.
 
 ## Данные (переносятся в engine/data.json без изменений)
