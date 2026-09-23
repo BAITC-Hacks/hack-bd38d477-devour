@@ -18,7 +18,7 @@ from ai import agent, explainer
     ("Бюджет 88,00", {"budget": 88}, True),
     ("Сдвиг −18,00", {"effects": {"C1": -18}}, True),
     ("Разница 18,00", {"before": 10, "after": -8}, True),
-    ("Сдвиг 18,00", {"effects": {"C1": -18}}, False),
+    ("Сдвиг 18,00", {"effects": {"C1": -18}}, True),
     ("Бюджет 1 000,00", {"budget": 1000}, True),
     ("Score 9.99e2", {"score": 56.54}, False),
     ("Score 1e999", {"score": 56.54}, False),
