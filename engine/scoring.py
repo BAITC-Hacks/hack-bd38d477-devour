@@ -1,3 +1,4 @@
+from engine.events import event_penalty, resolve_event
 from engine.rules import district_names, load_data, measures_index
 
 
@@ -25,11 +26,19 @@ def _synergy_district(measures, decisions, measure_id):
     return None
 
 
-def _apply(data, decisions):
+def _apply(data, decisions, event=None):
     measures = measures_index(data)
     names = district_names(data)
     horizon = data["horizon"]
     values = _base_values(data)
+
+    if event is not None:
+        targets = names if event["district"] is None else [event["district"]]
+        for target in targets:
+            if target not in values:
+                continue
+            for indicator, shift in event["effects"].items():
+                values[target][indicator] += shift
 
     for item in decisions:
         measure = measures.get(item.get("measure_id"))
@@ -93,20 +102,22 @@ def _evaluate(data, values):
     return score, d_avg, district_scores, critical
 
 
-def _score_only(data, decisions):
-    values, _ = _apply(data, decisions)
+def _score_only(data, decisions, event=None):
+    values, _ = _apply(data, decisions, event)
     return _evaluate(data, values)[0]
 
 
-def simulate(decisions):
+def simulate(decisions, event_id=None):
     data = load_data()
     decisions = list(decisions or [])
     measures = measures_index(data)
+    event = resolve_event(event_id)
+    budget = data["budget"] - event_penalty(event)
 
-    base_values, _ = _apply(data, [])
+    base_values, _ = _apply(data, [], event)
     base_score, _, base_district_scores, _ = _evaluate(data, base_values)
 
-    values, synergies = _apply(data, decisions)
+    values, synergies = _apply(data, decisions, event)
     score, d_avg, district_scores, critical = _evaluate(data, values)
 
     total_cost = sum(
@@ -126,7 +137,7 @@ def simulate(decisions):
                 "measure_id": measure["id"],
                 "district": item.get("district"),
                 "cost": measure["cost"],
-                "delta_score": score - _score_only(data, rest),
+                "delta_score": score - _score_only(data, rest, event),
             }
         )
 
@@ -134,7 +145,8 @@ def simulate(decisions):
 
     return {
         "total_cost": total_cost,
-        "budget_left": data["budget"] - total_cost,
+        "budget": budget,
+        "budget_left": budget - total_cost,
         "base_score": base_score,
         "score": score,
         "delta": score - base_score,
@@ -142,11 +154,12 @@ def simulate(decisions):
         "min_district": {"name": worst, "score": district_scores[worst]},
         "n_crit": len(critical),
         "critical": critical,
+        "event": event,
         "districts": [
             {
                 "name": district["name"],
                 "population": district["population"],
-                "before": {key: float(value) for key, value in district["indicators"].items()},
+                "before": dict(base_values[district["name"]]),
                 "after": dict(values[district["name"]]),
                 "score_before": base_district_scores[district["name"]],
                 "score_after": district_scores[district["name"]],
