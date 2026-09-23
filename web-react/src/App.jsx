@@ -67,7 +67,7 @@ function ScenarioPanel({ state, event, decisions, setPage }) {
   const available = (state?.budget ?? 100) - (event?.budget_penalty ?? 0)
   const cost = decisions.reduce((sum, item) => sum + (measures.find((measure) => measure.id === item.measure_id)?.cost ?? 0), 0)
   return (
-    <motion.aside initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.9, ease }} className="hidden lg:block absolute right-11 top-24 z-20 w-[300px] rounded-2xl border border-cream/20 bg-cream/10 backdrop-blur-xl p-5 text-cream shadow-[0_20px_60px_rgb(16_47_53/40%)]">
+    <motion.aside initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.9, ease }} className="hidden lg:block absolute right-11 top-24 z-30 w-[300px] rounded-2xl border border-cream/20 bg-cream/10 backdrop-blur-xl p-5 text-cream shadow-[0_20px_60px_rgb(16_47_53/40%)]">
       <p className="eyebrow text-gold mb-1">Ваш сценарий</p>
       <div className="flex items-baseline justify-between mb-3"><span className="text-sm text-cream/75">Бюджет</span><span className="display text-[28px] tabular">{num(cost)} / {num(available)}</span></div>
       <div className="h-1.5 rounded-full bg-cream/15 overflow-hidden mb-4"><motion.div className="h-full bg-gold rounded-full" animate={{ width: `${Math.min(100, (cost / available) * 100)}%` }} transition={{ duration: 0.5, ease }} /></div>
@@ -88,10 +88,10 @@ function TopNav({ page, setPage, event }) {
   return (
     <header className={`sticky top-0 z-30 flex items-center gap-6 px-6 md:px-12 py-3 text-cream transition-all duration-500 ${scrolled ? 'bg-petrol/85 backdrop-blur-xl shadow-[0_10px_40px_rgb(16_47_53/30%)] border-b border-cream/10' : 'bg-petrol/60 backdrop-blur-md border-b border-transparent'}`}>
       <button onClick={() => setPage('city')} className="flex items-center gap-2 font-bold text-[13px] leading-tight text-left">
-        <Leaf className="text-gold" size={26} />
+        <span className="grid place-items-center w-9 h-9 rounded-full bg-gold/15 border border-gold/40"><Leaf className="text-gold" size={20} /></span>
         <span>Аким<br />на 5 часов</span>
       </button>
-      <nav className="flex gap-1 mx-auto overflow-x-auto">
+      <nav className="flex gap-1 mx-auto overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {PAGES.map(([id, label]) => (
           <button key={id} onClick={() => setPage(id)} className={`relative px-4 py-2 text-sm font-medium whitespace-nowrap transition ${page === id ? 'text-cream' : 'text-cream/70 hover:text-cream'}`}>
             {label}
@@ -121,7 +121,7 @@ function Hero({ state, result, event, setPage, pending, decisions }) {
       <div aria-hidden className="display absolute left-6 md:left-11 top-6 md:top-12 text-cream leading-[0.9] select-none pointer-events-none" style={{ fontSize: 'clamp(80px, 13vw, 200px)', letterSpacing: '-0.02em', textShadow: '0 10px 40px rgb(16 47 53 / 60%)', perspective: '600px' }}>
         <Letters text="АСТАНА" />
       </div>
-      <motion.img src="/app/assets/bayterek-cutout.png" alt="" className="absolute -top-[4%] h-[118%] w-auto pointer-events-none" style={{ right: 'clamp(6%, 16vw, 22%)', filter: 'drop-shadow(0 20px 40px rgb(16 47 53 / 70%))' }} initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.2, ease }} />
+      <motion.img src="/app/assets/bayterek-cutout.png" alt="" className="absolute -top-[4%] h-[118%] w-auto pointer-events-none z-[5]" style={{ right: 'clamp(6%, 16vw, 22%)', filter: 'drop-shadow(0 20px 40px rgb(16 47 53 / 70%))' }} initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.2, ease }} />
       <div className="relative z-10 max-w-[560px] px-6 md:px-11 pt-[clamp(180px,29vw,300px)] pb-10">
         <Fade delay={0.5}><h1 className="display text-[clamp(30px,3.4vw,46px)] leading-[1.05] mb-3">Город начинается<br />с ваших решений</h1></Fade>
         <Fade delay={0.6}><p className="text-cream/80 max-w-[420px] mb-6">Реальный город. Реальные вызовы.<br />Попробуйте, каким будет завтра.</p></Fade>
@@ -176,7 +176,7 @@ function CityScreen({ state, result, event, setPage, pending, decisions }) {
           const critical = entries.filter(([, value]) => value < 40).length
           const lowest = entries.reduce((best, item) => (item[1] < best[1] ? item : best))
           return (
-            <Fade key={district.name} delay={index * 0.06} className="card p-6">
+            <Fade key={district.name} delay={index * 0.06} className="card p-6 relative overflow-hidden"><span className="absolute left-0 top-0 h-full w-1.5" style={{ background: district.base_score < 55 ? 'var(--color-dir-s)' : 'var(--color-positive)' }} />
               <div className="flex justify-between items-start gap-3">
                 <div><h3 className="display text-[20px]">{district.name}</h3><small className="text-muted">{num(district.population * 100)}% населения</small></div>
                 <strong className="display text-[40px] tabular">{fmt(district.base_score)}</strong>
@@ -334,7 +334,7 @@ function ResultScreen({ state, result, event, explaining, applyRecommendation, s
       </div>
       <div className="grid md:grid-cols-3 gap-4 mb-6">
         {[['Score: было → стало', `${fmt(simulation.base_score)} → ${fmt(simulation.score)}`, `${signed(simulation.delta)} к базовому сценарию`], ['Бюджет программы', `${num(simulation.total_cost)} / ${num(simulation.budget)}`, `Остаток: ${num(simulation.budget_left)}`], ['Критических показателей', String(simulation.n_crit), `Самый слабый район: ${simulation.min_district.name} (${fmt(simulation.min_district.score)})`]].map(([label, value, note], index) => (
-          <Fade key={label} delay={0.2 + index * 0.1} className="card p-6"><p className="eyebrow mb-3">{label}</p><strong className="display text-[clamp(28px,2.8vw,40px)] block tabular">{value}</strong><p className="text-[13px] text-muted mt-2 m-0">{note}</p></Fade>
+          <Fade key={label} delay={0.2 + index * 0.1} className="card p-6 relative overflow-hidden"><span className="absolute -right-10 -top-10 w-40 h-40 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgb(212 185 120 / 35%), transparent 70%)' }} /><p className="eyebrow mb-3">{label}</p><strong className="display text-[clamp(28px,2.8vw,40px)] block tabular">{value}</strong><p className="text-[13px] text-muted mt-2 m-0">{note}</p></Fade>
         ))}
       </div>
       <Fade delay={0.5} className="card p-6 mb-6 overflow-x-auto">
@@ -589,7 +589,7 @@ export default function App() {
             {page === 'optimizer' && <OptimizerScreen event={event} optimal={optimal} loadOptimal={loadOptimal} applyPlan={applyPlan} state={state} busy={optimizing} />}
           </motion.div>
         </AnimatePresence>
-        <footer className="flex flex-wrap justify-between gap-4 text-muted border-t border-line pt-6 mt-12 text-[13px]"><span>Аким на 5 часов</span><span>Учебная модель · Числа считает движок, AI объясняет результат</span></footer>
+        <footer className="flex flex-wrap justify-between gap-4 text-muted border-t border-line pt-6 mt-12 text-[13px]"><span className="flex items-center gap-2"><Leaf size={14} className="text-gold" /> Аким на 5 часов · команда DEVour</span><span>Учебная модель · Числа считает движок, AI объясняет результат</span></footer>
       </main>
     </div>
   )
