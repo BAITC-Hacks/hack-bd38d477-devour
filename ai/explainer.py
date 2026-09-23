@@ -5,6 +5,7 @@ from openai import OpenAI
 
 ANALYSIS_KEYS = ("summary", "strengths", "risks", "consequences", "tradeoffs", "recommendations")
 SYSTEM_PROMPT = "Ты аналитик городского управления. Используй только числа из входных данных, ничего не придумывай. Простым языком на русском объясни компромиссы. Верни только JSON-объект со строковыми полями summary и массивами строк strengths, risks, consequences, tradeoffs, recommendations."
+EVENT_PROMPT = " Входные данные содержат городское событие: объясни, как оно повлияло на бюджет и показатели, и оцени, насколько сценарий устойчив к нему. Числа используй только из входных данных."
 
 
 def _valid_analysis(value):
@@ -38,7 +39,9 @@ def fallback_analysis(simulation):
 
 def _request_analysis(payload):
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}]
+    contains_event = bool(payload.get("event")) or any(bool((row.get("simulation") or {}).get("event")) for row in payload.get("results", []))
+    system_prompt = SYSTEM_PROMPT + (EVENT_PROMPT if contains_event else "")
+    messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}]
     for attempt in range(2):
         response = client.chat.completions.create(model=os.environ.get("OPENAI_MODEL", "gpt-6-sol"), messages=messages, response_format={"type": "json_object"})
         content = response.choices[0].message.content or ""
