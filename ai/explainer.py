@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from decimal import Decimal, InvalidOperation
 
 from openai import OpenAI
 from engine import load_data
@@ -24,15 +25,50 @@ def _format_amount(value):
 
 
 def normalize_text_numbers(text):
-    pattern = r"(?<![A-Za-zА-Яа-яЁё0-9_])([+-]?\d+(?:[.,]\d+)?)(?![A-Za-zА-Яа-яЁё0-9_])"
+    pattern = rf"(?<![\w])({NUMBER_PATTERN.pattern})(?![\w])"
 
     def replace(match):
         value = match.group(1)
-        number = float(value.replace(",", "."))
+        key = _number_key(value)
+        if key is None:
+            return value
         sign = "+" if value.startswith("+") else ""
-        return f"{sign}{number:.2f}".replace(".", ",")
+        return f"{sign}{key:.2f}".replace(".", ",")
 
     return re.sub(pattern, replace, text)
+
+
+
+NUMBER_PATTERN = re.compile(r"[+−-]?\d+(?:[ \u00a0\u202f]\d{3})*(?:[.,]\d+)?(?:[eE][+−-]?\d+)?")
+
+
+def _number_key(value):
+    try:
+        number = float(str(value).replace("−", "-").replace(",", ".").replace(" ", "").replace("\u00a0", "").replace("\u202f", ""))
+        key = Decimal(f"{number:.2f}")
+        return key if key.is_finite() else None
+    except (ValueError, OverflowError, InvalidOperation):
+        return None
+
+
+def _numbers(value):
+    if isinstance(value, bool) or value is None:
+        return set()
+    if isinstance(value, (int, float)):
+        return {_number_key(value)}
+    if isinstance(value, str):
+        return {_number_key(match.group()) for match in NUMBER_PATTERN.finditer(value)}
+    if isinstance(value, dict):
+        return set().union(*(_numbers(item) for item in value.values()))
+    if isinstance(value, (list, tuple)):
+        return set().union(*(_numbers(item) for item in value))
+    return set()
+
+
+def numbers_supported(text, inputs):
+    values = _numbers(text)
+    allowed = _numbers(inputs) - {None}
+    return None not in values and values <= allowed
 
 
 def _valid_analysis(value):
@@ -156,13 +192,13 @@ def _request_analysis(payload):
             result = json.loads(content)
         except (TypeError, json.JSONDecodeError):
             result = None
-        if _valid_analysis(result):
+        if _valid_analysis(result) and numbers_supported(result, payload):
             result["summary"] = normalize_text_numbers(result["summary"])
             for key in ANALYSIS_KEYS[1:]:
                 result[key] = [normalize_text_numbers(item) for item in result[key]]
             return result
         messages.append({"role": "assistant", "content": content})
-        messages.append({"role": "user", "content": "Ответ не соответствует схеме. Повтори один раз: только JSON с точными ключами и типами из системного сообщения."})
+        messages.append({"role": "user", "content": "Ответ не соответствует схеме или содержит числа, которых нет во входных данных. Повтори один раз: верни JSON с точными ключами и типами. Все числа бери только из исходного входа, без собственных вычислений; неподтверждённые числа убери."})
     return None
 
 
