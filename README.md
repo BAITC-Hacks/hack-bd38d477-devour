@@ -142,6 +142,8 @@ docker run --rm -p 8000:8000 -e OPENAI_API_KEY=ваш_ключ akim-simulator
 
 Python, FastAPI, uvicorn, OpenAI SDK, python-dotenv, pytest. Фронтенд — статические HTML/CSS/JavaScript без сборки и без Chart.js. Шрифт Manrope загружается из Google Fonts; при недоступности сети используется системный шрифт.
 
+Вторая витрина `/v2/` (`web-v2/`) использует тот же `app.js` и API, но собрана на фотографиях: панорамы Астаны и карточки направлений лежат в `web-v2/assets/`. Все изображения там сгенерированы командой с помощью AI (ChatGPT) специально для этого проекта — это не документальные фотографии и не чужая графика.
+
 ```mermaid
 flowchart LR
     U[web: index.html, app.js, styles.css] -->|HTTP JSON| A[api/main.py: FastAPI]
