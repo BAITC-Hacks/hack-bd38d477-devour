@@ -11,7 +11,7 @@
 <body>
   <header class="header"><a class="brand" href="#city"><span class="brand-icon">А</span><span>Аким на 5 часов<small>Лаборатория городских решений</small></span></a><span class="city-label">АСТАНА · ГОРИЗОНТ 8 КВАРТАЛОВ</span></header>
   <main>
-    <div class="hero"><div><p class="eyebrow">ВАШ ГОРОД. ВАШИ РЕШЕНИЯ.</p><h1>Каким станет город<br>после ваших решений?</h1><p>Выберите 5 мер. Распределите бюджет. Узнайте, как изменится качество жизни в пяти районах Астаны.</p></div><div class="hero-score"><span>Базовый индекс · без события</span><strong id="base-score">—</strong><span>Astana Quality of Life Score</span></div></div>
+    <div class="hero"><div><p class="eyebrow">ВАШ ГОРОД. ВАШИ РЕШЕНИЯ.</p><h1>Каким станет город<br>после ваших решений?</h1><p>Выберите 5 мер. Распределите бюджет. Узнайте, как изменится качество жизни в пяти районах Астаны.</p></div><div class="hero-score" aria-live="polite" aria-atomic="true"><span id="hero-score-label">Базовый индекс · без события</span><strong id="base-score">—</strong><span id="hero-score-delta" class="hero-score-delta" hidden></span><span>Astana Quality of Life Score</span></div></div>
     <nav aria-label="Разделы симулятора"><button data-page="city" class="active">01 · Город</button><button data-page="decisions">02 · Решения</button><button data-page="result">03 · Результат</button><button data-page="compare">04 · Сравнение</button><button data-page="optimizer">05 · Оптимизатор</button><button data-page="events">06 · События</button></nav>
     <div id="notice" role="alert" hidden></div>
     <p id="loading" role="status">Загружаем данные города…</p>
