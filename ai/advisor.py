@@ -56,5 +56,5 @@ def recommendations(decisions, current_simulation):
     ranked.sort(key=lambda item: item[0], reverse=True)
     output = []
     for gain, old, new, score in ranked[:3]:
-        output.append({"text": f"Заменить {old.get('measure_id')} на {new['measure_id']} ({new.get('district') or 'город'}): прирост оценки {gain:.5f}.", "replace": {"from": old, "to": new}, "score": score, "delta_score": gain})
+        output.append({"text": f"Заменить {old.get('measure_id')} на {new['measure_id']} ({new.get('district') or 'город'}): прирост оценки {gain:.2f}.", "replace": {"from": old, "to": new}, "score": score, "delta_score": gain})
     return output
