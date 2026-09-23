@@ -6,6 +6,7 @@
   <title>Кабинет акима — Аким на 5 часов</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <meta name="theme-color" content="#0B1F2A">
   <link rel="stylesheet" href="/v2/styles.css">
 </head>
 <body>
@@ -25,10 +26,26 @@
   </aside>
   <main id="main" tabindex="-1">
     <header class="header"><a class="brand" href="#city">Аким на 5 часов<small>Кабинет городских решений</small></a><span class="city-label">АСТАНА · ГОРИЗОНТ 8 КВАРТАЛОВ</span></header>
-    <div class="hero">
-      <div><p class="eyebrow">ВАШ ГОРОД. ВАШИ РЕШЕНИЯ.</p><h1>Большие перемены<br>начинаются с пяти решений.</h1><p>У вас 100 единиц бюджета и пять районов. Соберите программу, которая сделает жизнь в Астане лучше.</p></div>
-      <div class="hero-score card-ink" aria-live="polite" aria-atomic="true"><span id="hero-score-label">Базовый индекс · без события</span><strong id="base-score" class="display" data-countup>—</strong><span id="hero-score-delta" class="hero-score-delta" hidden></span><span>Astana Quality of Life Score</span></div>
+    <div id="event-topbar" class="event-topbar" role="status" hidden></div>
+    <div class="hero" id="hero">
+      <div class="hero-sky" id="skyline" aria-hidden="true"></div>
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <p class="eyebrow">ВАШ ГОРОД. ВАШИ РЕШЕНИЯ.</p>
+          <h1>Город оживает<br>от пяти решений.</h1>
+          <p>У вас 100 единиц бюджета и пять районов Астаны. Соберите программу — и посмотрите, как в окнах зажигается свет.</p>
+          <div class="hero-actions"><a class="btn btn-accent" href="#decisions">Собрать программу →</a><a class="btn btn-glass" href="#agent">Спросить AI-акима</a></div>
+          <ul class="hero-legend" aria-label="Как читать панораму"><li><i class="dot windows"></i>Окна — качество жизни</li><li><i class="dot trees"></i>Деревья — озеленение</li><li><i class="dot cars"></i>Машины — разгрузка дорог</li></ul>
+        </div>
+        <div class="hero-score card-ink" aria-live="polite" aria-atomic="true">
+          <span id="hero-score-label">Базовый индекс · без события</span>
+          <div class="score-ring" id="score-ring" data-band="mid"><strong id="base-score" class="display" data-countup data-count-from="0">—</strong></div>
+          <span id="hero-score-delta" class="hero-score-delta" hidden></span>
+          <span class="hero-score-caption">Astana Quality of Life Score</span>
+        </div>
+      </div>
     </div>
+    <div id="event-alert" class="event-alert" role="alert" aria-live="assertive" hidden></div>
     <div id="notice" role="alert" hidden></div>
     <p id="loading" role="status">Загружаем данные города…</p>
     <section id="city" class="page" aria-labelledby="city-title">
@@ -38,7 +55,7 @@
     </section>
     <section id="decisions" class="page" aria-labelledby="decisions-title" hidden>
       <div class="section-heading"><div><p class="eyebrow">02 / ВАША ПРОГРАММА</p><h2 id="decisions-title">Пять шагов к лучшему городу</h2></div><div class="actions"><button id="demo" class="btn btn-glass secondary" disabled>Демо-сценарий</button><button id="clear" class="btn btn-glass secondary">Сбросить выбор</button></div></div>
-      <div class="decision-layout"><div id="catalog"></div><aside class="budget-panel card"><p class="eyebrow">БЮДЖЕТ ПРОГРАММЫ</p><h3>Ресурсы для перемен</h3><p id="active-event" class="muted" aria-live="polite">Без события</p><span class="label">Осталось</span><strong id="remaining" class="display" data-countup>100</strong><div class="budget-number">Использовано <strong id="cost" data-countup>0</strong> из <span id="budget">100</span></div><div id="budget-segments" aria-label="Распределение бюджета по направлениям"></div><progress id="budget-bar" value="0" max="100" aria-label="Использованный бюджет"></progress><p>Выбрано мер: <strong id="count">0 / 5</strong></p><p class="muted">Не больше двух мер из одного направления. Для районных мер выберите район.</p><div id="validation" aria-live="polite"></div><button id="calculate" class="btn btn-accent" disabled>Рассчитать результат →</button></aside></div>
+      <div class="decision-layout"><div id="catalog"></div><aside class="budget-panel card"><p class="eyebrow">БЮДЖЕТ ПРОГРАММЫ</p><h3>Ресурсы для перемен</h3><p id="active-event" class="muted" aria-live="polite">Без события</p><span class="label">Осталось</span><strong id="remaining" class="display" data-countup>100</strong><div class="budget-number">Использовано <strong id="cost" data-countup>0</strong> из <span id="budget">100</span></div><div class="budget-segments-wrap"><span class="label">По направлениям</span><div id="budget-segments" aria-label="Распределение бюджета по направлениям"></div><ul class="budget-legend" aria-hidden="true"><li data-direction="T"><i></i>Транспорт</li><li data-direction="E"><i></i>Экология</li><li data-direction="S"><i></i>Соцсфера</li><li data-direction="B"><i></i>Безопасность</li><li data-direction="C"><i></i>Сервисы</li></ul></div><progress id="budget-bar" value="0" max="100" aria-label="Использованный бюджет"></progress><p>Выбрано мер: <strong id="count">0 / 5</strong></p><p class="muted">Не больше двух мер из одного направления. Для районных мер выберите район.</p><div id="validation" aria-live="polite"></div><button id="calculate" class="btn btn-accent" disabled>Рассчитать результат →</button></aside></div>
     </section>
     <section id="result" class="page" aria-labelledby="result-title" hidden>
       <div class="section-heading"><div><p class="eyebrow">03 / ЭФФЕКТ ПРОГРАММЫ</p><h2 id="result-title">Что изменится за 8 кварталов</h2></div><button id="report-button" class="btn btn-glass" disabled>Сформировать отчёт</button></div>
@@ -128,6 +145,7 @@
       });
     })();
   </script>
+  <script src="/v2/skyline.js" defer></script>
   <script src="/app.js" defer></script>
   <script src="/v2/map.js" defer></script>
   <script src="/v2/agent.js" defer></script>
