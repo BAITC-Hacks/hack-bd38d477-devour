@@ -128,8 +128,13 @@ def run_agent(goal=None, event_id=None):
         valid_plans = []
         tool_calls_count = 0
         final = None
-        while tool_calls_count < TOOL_LIMIT:
-            response = client.chat.completions.create(model=os.environ.get("OPENAI_MODEL", "gpt-6-sol"), messages=messages, tools=TOOLS, tool_choice="auto")
+        while True:
+            if tool_calls_count >= TOOL_LIMIT:
+                messages.append({"role": "user", "content": "Лимит инструментов исчерпан. Выбери лучший валидный план среди уже проверенных и верни итоговый JSON без новых инструментов."})
+                response = client.chat.completions.create(model=os.environ.get("OPENAI_MODEL", "gpt-6-sol"), messages=messages, reasoning_effort="none")
+                final = _parse_final(response.choices[0].message.content)
+                break
+            response = client.chat.completions.create(model=os.environ.get("OPENAI_MODEL", "gpt-6-sol"), messages=messages, tools=TOOLS, tool_choice="auto", reasoning_effort="none")
             message = response.choices[0].message
             calls = message.tool_calls or []
             if not calls:
@@ -138,7 +143,9 @@ def run_agent(goal=None, event_id=None):
             messages.append(message.model_dump(exclude_none=True))
             for call in calls:
                 if tool_calls_count >= TOOL_LIMIT:
-                    break
+                    result = {"error": "Лимит вызовов инструментов исчерпан; новых проверок выполнить нельзя."}
+                    messages.append({"role": "tool", "tool_call_id": call.id, "content": json.dumps(result, ensure_ascii=False)})
+                    continue
                 tool_calls_count += 1
                 try:
                     arguments = json.loads(call.function.arguments or "{}")
