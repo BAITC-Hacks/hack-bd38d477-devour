@@ -21,7 +21,12 @@ def round_floats(value):
     if isinstance(value, float):
         return round(value, 2)
     if isinstance(value, dict):
-        return {key: round_floats(item) for key, item in value.items()}
+        rounded = {key: round_floats(item) for key, item in value.items()}
+        score = rounded.get("score")
+        base_score = rounded.get("base_score")
+        if "delta" in rounded and isinstance(score, (int, float)) and isinstance(base_score, (int, float)):
+            rounded["delta"] = round(round(score, 2) - round(base_score, 2), 2)
+        return rounded
     if isinstance(value, list):
         return [round_floats(item) for item in value]
     if isinstance(value, tuple):
