@@ -96,6 +96,7 @@ def _population_shares(value):
 def _allowed_numbers(inputs):
     sources = _numbers(inputs) - {None}
     candidates = set(sources)
+    candidates.update(abs(value) for value in sources)
     source_values = list(sources)
     candidates.update(Decimal(value) for value in range(11))
     for index, first in enumerate(source_values):
