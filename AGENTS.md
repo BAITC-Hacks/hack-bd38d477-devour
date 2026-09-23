@@ -107,6 +107,13 @@ contributions.delta_score = Score(все меры) − Score(все меры б�
 
 `event_id` везде необязателен: без него поведение и числа прежние. При событии `validate` возвращает уменьшенный `budget`, а текст ошибки о перерасходе называет событие; `simulate` считает `base_score` и `score` с учётом события и добавляет поле `"event"` (объект события или `null`), в `districts[].before` уже учтено событие; `optimize` ищет наборы в уменьшенном бюджете.
 
+AI-аким:
+- `POST /api/agent` принимает `{"goal": str | null, "event_id": str | null}` и возвращает `{"decisions": [...], "simulation": {...}, "steps": [{"action": "validate" | "simulate", "decisions": [...], "summary": str}], "explanation": str, "source": "ai" | "fallback"}`.
+- Агент использует OpenAI function calling с инструментами `list_measures`, `validate_plan(decisions)` и `simulate_plan(decisions)`; инструменты проверки и симуляции передают текущий `event_id` движку.
+- За один запуск допускается не более 8 вызовов инструментов. Итоговый набор всегда повторно проверяется через `validate` и `simulate`; если он невалиден, возвращается лучший валидный набор из проверенных.
+- Без `OPENAI_API_KEY` или при ошибке AI возвращается лучший набор из `optimize(top=1, event_id)` с шаблонным объяснением, `source` равен `"fallback"`.
+- Неизвестный `event_id` возвращает HTTP 422 с русским сообщением.
+
 API (Агент 2) — новое:
 - `GET /api/events` → `list_events()`
 - необязательное поле `"event_id"` в теле `/api/validate`, `/api/simulate`, `/api/explain` и у каждого сценария в `/api/compare`
