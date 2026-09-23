@@ -1,11 +1,12 @@
 import json
 import os
+import re
 
 from openai import OpenAI
 from engine import load_data
 
 ANALYSIS_KEYS = ("summary", "strengths", "risks", "consequences", "tradeoffs", "recommendations")
-SYSTEM_PROMPT = "Ты аналитик городского управления и готовишь вывод для акима. Пиши ясно и по делу, объясняй компромиссы простым русским языком. Используй только числа из входных данных, ничего не придумывай. Для показателей используй русские названия из словаря indicator_names, не коды. В тексте используй десятичную запятую. Не упоминай данные, вход, источник или то, что что-то где-то указано. Верни только JSON-объект со строковыми полями summary и массивами строк strengths, risks, consequences, tradeoffs, recommendations."
+SYSTEM_PROMPT = "Ты аналитик городского управления и готовишь вывод для акима. Пиши ясно и по делу, объясняй компромиссы простым русским языком. Используй только числа из входных данных, ничего не придумывай. Для показателей используй русские названия из словаря indicator_names, не коды. Каждое число в тексте пиши ровно с двумя знаками после десятичной запятой. Не упоминай данные, вход, источник или то, что что-то где-то указано. Верни только JSON-объект со строковыми полями summary и массивами строк strengths, risks, consequences, tradeoffs, recommendations."
 EVENT_PROMPT = " Входные данные содержат городское событие: объясни, как оно повлияло на бюджет и показатели, и оцени, насколько сценарий устойчив к нему. Числа используй только из входных данных."
 
 
@@ -19,9 +20,19 @@ def _format_number(value, signed=False):
 
 
 def _format_amount(value):
-    if isinstance(value, (int, float)) and float(value).is_integer():
-        return str(int(value))
     return _format_number(value)
+
+
+def normalize_text_numbers(text):
+    pattern = r"(?<![A-Za-zА-Яа-яЁё0-9_])([+-]?\d+(?:[.,]\d+)?)(?![A-Za-zА-Яа-яЁё0-9_])"
+
+    def replace(match):
+        value = match.group(1)
+        number = float(value.replace(",", "."))
+        sign = "+" if value.startswith("+") else ""
+        return f"{sign}{number:.2f}".replace(".", ",")
+
+    return re.sub(pattern, replace, text)
 
 
 def _valid_analysis(value):
@@ -49,10 +60,11 @@ def fallback_analysis(simulation):
     contributions = simulation.get("contributions", []) or []
     strengths = []
     leading = sorted((item for item in contributions if item.get("delta_score", 0) > 0), key=lambda item: item["delta_score"], reverse=True)[:3]
-    for item in leading:
+    for index, item in enumerate(leading):
         measure_id = item.get("measure_id", "Мера")
         measure_name = measures.get(measure_id, {}).get("name", measure_id)
-        strengths.append(f"{measure_id} («{measure_name}») даёт наибольший вклад среди мер: +{_format_number(item['delta_score'])} к Score.")
+        contribution_text = "даёт наибольший вклад" if index == 0 else "даёт также заметный вклад"
+        strengths.append(f"{measure_id} («{measure_name}») {contribution_text}: +{_format_number(item['delta_score'])} к Score.")
     for synergy in simulation.get("synergies", []) or []:
         pair = " + ".join(synergy.get("pair", []))
         indicator_name = indicators.get(synergy.get("indicator"), synergy.get("indicator", "показатель"))
@@ -145,6 +157,9 @@ def _request_analysis(payload):
         except (TypeError, json.JSONDecodeError):
             result = None
         if _valid_analysis(result):
+            result["summary"] = normalize_text_numbers(result["summary"])
+            for key in ANALYSIS_KEYS[1:]:
+                result[key] = [normalize_text_numbers(item) for item in result[key]]
             return result
         messages.append({"role": "assistant", "content": content})
         messages.append({"role": "user", "content": "Ответ не соответствует схеме. Повтори один раз: только JSON с точными ключами и типами из системного сообщения."})
