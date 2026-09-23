@@ -18,9 +18,11 @@ let comparing = false;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const num = value => typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString('ru-RU',{maximumFractionDigits:2}) : '—';
 const signed = value => `${value > 0 ? '+' : ''}${num(value)}`;
+const localizeNumbers = value => String(value ?? '').replace(/(?<![\p{L}\p{N}_./])([+-]?\d+)\.(\d+)(?![\p{L}\p{N}_]|\.\d)/gu,'$1,$2');
+const displayText = value => esc(localizeNumbers(value));
 const copy = value => JSON.parse(JSON.stringify(value));
 const measureName = id => state.measures.find(item => item.id === id)?.name || id;
-function notice(message = '') { $('#notice').textContent = message; $('#notice').hidden = !message; }
+function notice(message = '') { $('#notice').textContent = localizeNumbers(message); $('#notice').hidden = !message; }
 async function request(path, body, timeout = 90000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
@@ -46,8 +48,18 @@ function page(id) {
   document.querySelectorAll('nav button').forEach(item => { item.classList.toggle('active', item.dataset.page === id); item.setAttribute('aria-current',item.dataset.page === id ? 'page' : 'false'); });
   history.replaceState(null,'',`${location.pathname}${location.search}#${id}`);
 }
+function renderHeaderScore() {
+  const simulation = result?.simulation;
+  $('#base-score').textContent = num(simulation ? simulation.score : state.base_score);
+  $('#hero-score-label').textContent = simulation ? localizeNumbers(`Последний расчёт · ${result.event?.name || 'без события'}`) : 'Базовый индекс · без события';
+  const delta = $('#hero-score-delta');
+  delta.hidden = !simulation;
+  delta.textContent = simulation ? `${signed(simulation.delta)} к базе ${num(simulation.base_score)}` : '';
+  delta.classList.toggle('positive',simulation?.delta > 0);
+  delta.classList.toggle('negative',simulation?.delta < 0);
+}
 function renderCity() {
-  $('#base-score').textContent = num(state.base_score);
+  renderHeaderScore();
   $('#districts').innerHTML = state.districts.map(district => `<article class="district"><h3>${esc(district.name)}</h3><small>${num(district.population * 100)}% населения</small>${Object.entries(labels).map(([id,label]) => { const value = district.indicators[id]; return `<div class="indicator ${value < 40 ? 'critical' : ''}"><div class="indicator-head"><span>${esc(label)}</span><strong>${num(value)}${value < 40 ? ' !' : ''}</strong></div><div class="meter"><span style="width:${Math.max(0,Math.min(100,Number(value) || 0))}%"></span></div></div>`; }).join('')}</article>`).join('');
 }
 function renderCatalog() {
@@ -78,15 +90,16 @@ async function validateSelection() {
     if (current !== revision) return;
     renderBudget(validation);
     valid = validation.valid === true;
-    $('#validation').innerHTML = valid ? '<p class="success">Набор готов к расчёту.</p>' : `<ul>${validation.errors.map(error => `<li>${esc(error)}</li>`).join('')}</ul>`;
+    $('#validation').innerHTML = valid ? '<p class="success">Набор готов к расчёту.</p>' : `<ul>${validation.errors.map(error => `<li>${displayText(error)}</li>`).join('')}</ul>`;
     $('#calculate').disabled = !valid || calculating;
-  } catch (error) { if (current === revision) $('#validation').innerHTML = `<p class="critical">${esc(error.message)}</p><button id="retry-validation" class="secondary">Повторить проверку</button>`; }
+  } catch (error) { if (current === revision) $('#validation').innerHTML = `<p class="critical">${displayText(error.message)}</p><button id="retry-validation" class="secondary">Повторить проверку</button>`; }
 }
 function districtTable(simulation) {
   return `<div class="table-wrap"><table><thead><tr><th>Район</th><th>Оценка до → после</th>${Object.keys(labels).map(id => `<th title="${esc(labels[id])}">${id}</th>`).join('')}</tr></thead><tbody>${simulation.districts.map(district => `<tr><th>${esc(district.name)}</th><td>${num(district.score_before)} → ${num(district.score_after)}</td>${Object.keys(labels).map(id => `<td class="${district.after[id] < 40 ? 'critical' : ''}">${num(district.before[id])} → <strong>${num(district.after[id])}</strong></td>`).join('')}</tr>`).join('')}</tbody></table></div><p class="muted">${Object.entries(labels).map(([id,label]) => `${id} — ${label}`).join('; ')}.</p>`;
 }
 function renderResult() {
   const simulation = result.simulation;
+  renderHeaderScore();
   $('#result-content').className = '';
   $('#result-content').innerHTML = `${eventSummary(result.event,result.budget)}<div class="stats"><div class="stat"><span>Score: было → стало</span><strong>${num(simulation.base_score)} → ${num(simulation.score)}</strong><p class="delta">${signed(simulation.delta)} к базовому сценарию</p></div><div class="stat"><span>Бюджет программы</span><strong>${num(simulation.total_cost)} / ${num(result.budget)}</strong><p>Остаток: ${num(simulation.budget_left)}</p></div><div class="stat"><span>Критических показателей</span><strong>${num(simulation.n_crit)}</strong><p>Самый слабый район: ${esc(simulation.min_district.name)} (${num(simulation.min_district.score)})</p></div></div>${heatmaps(simulation)}<h3>Показатели районов: до → после</h3>${districtTable(simulation)}<h3>Вклад каждой меры в Score</h3><p class="muted">Разница между полным набором и набором без этой меры. Вклады могут пересекаться из-за синергий и порогов.</p><div class="table-wrap"><table><thead><tr><th>Мера</th><th>Район</th><th>Стоимость</th><th>Вклад</th></tr></thead><tbody>${simulation.contributions.map(item => `<tr><td>${esc(measureName(item.measure_id))}</td><td>${esc(item.district || 'Весь город')}</td><td>${num(item.cost)}</td><td>${signed(item.delta_score)}</td></tr>`).join('')}</tbody></table></div><h3>Сработавшие синергии</h3><div class="panel">${simulation.synergies.length ? simulation.synergies.map(item => `<p>${item.pair.map(esc).join(' + ')} · ${esc(item.district)} · ${esc(labels[item.indicator])} ${signed(item.bonus)}</p>`).join('') : 'В этом наборе нет синергий.'}</div><h3 style="margin-top:28px">Объяснение результата</h3><div id="analysis-content"><p role="status">Готовим анализ…</p></div>`;
   $('#report-button').disabled = true;
@@ -95,8 +108,37 @@ function renderResult() {
   $('#scenario-name').value = `Сценарий ${saved.length+1}`;
   $('#save').disabled = saved.length >= 3;
 }
-function analysisMarkup(data) {
-  return `<span class="badge">${data.source === 'fallback' ? 'Шаблонный анализ · без AI' : 'Анализ AI'}</span><div class="analysis-grid">${Object.entries(analysisLabels).map(([key,label]) => { const value = data.analysis[key]; return `<article class="panel"><h3>${label}</h3>${Array.isArray(value) ? value.length ? `<ul>${value.map(item => `<li>${esc(typeof item === 'string' ? item : item?.text || '')}</li>`).join('')}</ul>` : '<p class="muted">Не отмечены в анализе.</p>' : `<p>${esc(value)}</p>`}</article>`; }).join('')}</div>`;
+function recommendationReplacement(item) {
+  const replacement = item?.replace;
+  const isDecision = decision => decision && typeof decision.measure_id === 'string' && (decision.district === null || typeof decision.district === 'string');
+  return replacement && isDecision(replacement.from) && isDecision(replacement.to) ? replacement : null;
+}
+function analysisMarkup(data, interactive = false) {
+  return `<span class="badge">${data.source === 'fallback' ? 'Шаблонный анализ · без AI' : 'Анализ AI'}</span><div class="analysis-grid">${Object.entries(analysisLabels).map(([key,label]) => {
+    const value = data.analysis[key];
+    let content;
+    if (key === 'recommendations' && Array.isArray(value) && value.length && interactive) {
+      content = `<ul class="recommendation-list">${value.map((item,index) => {
+        const replacement = recommendationReplacement(item);
+        return `<li class="recommendation-item"><p>${displayText(typeof item === 'string' ? item : item?.text || '')}</p><button data-recommendation="${index}" ${replacement ? '' : 'disabled'} aria-label="Применить рекомендацию ${num(index+1)}">Применить</button>${replacement ? '' : '<small>В ответе нет данных о замене меры. Автоматическое применение недоступно.</small>'}</li>`;
+      }).join('')}</ul>`;
+    } else {
+      content = Array.isArray(value) ? value.length ? `<ul>${value.map(item => `<li>${displayText(typeof item === 'string' ? item : item?.text || '')}</li>`).join('')}</ul>` : '<p class="muted">Не отмечены в анализе.</p>' : `<p>${displayText(value)}</p>`;
+    }
+    return `<article class="panel"><h3>${label}</h3>${content}</article>`;
+  }).join('')}</div>`;
+}
+function applyRecommendation(index) {
+  if (!Number.isInteger(index) || index < 0) return;
+  const replacement = recommendationReplacement(result?.analysis?.recommendations?.[index]);
+  if (!replacement) { notice('В рекомендации нет данных для замены меры.'); return; }
+  const matches = decisions.map((item,position) => item.measure_id === replacement.from.measure_id && item.district === replacement.from.district ? position : -1).filter(position => position >= 0);
+  if (matches.length !== 1) { notice('Исходная мера из рекомендации уже изменена или отсутствует в текущем наборе. Рассчитайте программу заново, чтобы получить актуальные рекомендации.'); return; }
+  decisions = decisions.map((item,position) => position === matches[0] ? {measure_id:replacement.to.measure_id,district:replacement.to.district} : item);
+  notice();
+  renderCatalog();
+  page('decisions');
+  validateSelection();
 }
 async function calculate() {
   if (!valid || calculating) return;
@@ -116,10 +158,10 @@ async function calculate() {
       const explanation = await request('/api/explain',snapshot);
       calculated.analysis = explanation.analysis;
       calculated.source = explanation.source;
-      $('#analysis-content').innerHTML = analysisMarkup(calculated);
+      $('#analysis-content').innerHTML = analysisMarkup(calculated,true);
     } catch (error) {
       calculated.analysisError = `Расчёт сохранён, но анализ недоступен. ${error.message}`;
-      $('#analysis-content').innerHTML = `<p class="critical">${esc(calculated.analysisError)}</p>`;
+      $('#analysis-content').innerHTML = `<p class="critical">${displayText(calculated.analysisError)}</p>`;
     } finally { $('#report-button').disabled = false; }
   } catch (error) { notice(error.message); }
   finally { calculating = false; $('#calculate').disabled = !valid; $('#calculate').textContent = 'Рассчитать результат →'; }
@@ -141,7 +183,7 @@ async function compare() {
   try {
     const data = await request('/api/compare',{scenarios:snapshot});
     if (JSON.stringify(snapshot) !== JSON.stringify(saved.map(({name,decisions,event_id}) => ({name,decisions,event_id:event_id ?? null})))) return;
-    $('#comparison').innerHTML = `<div class="table-wrap"><table><thead><tr><th>Сценарий</th><th>Событие</th><th>Score</th><th>Изменение</th><th>Стоимость</th><th>Критические показатели</th></tr></thead><tbody>${data.results.map((item,index) => `<tr><th>${esc(item.name)}</th><td>${esc(item.simulation.event?.name || saved[index]?.event?.name || 'Без события')}</td><td>${num(item.simulation.score)}</td><td>${signed(item.simulation.delta)}</td><td>${num(item.simulation.total_cost)}</td><td>${num(item.simulation.n_crit)}</td></tr>`).join('')}</tbody></table></div><p class="muted">При разных событиях исходные показатели и бюджет различаются. Дельта каждого сценария рассчитана относительно его собственной базы.</p><div class="panel"><span class="badge">${data.source === 'fallback' ? 'Шаблонный анализ · без AI' : 'Анализ AI'}</span><p>${esc(data.analysis)}</p></div>`;
+    $('#comparison').innerHTML = `<div class="table-wrap"><table><thead><tr><th>Сценарий</th><th>Событие</th><th>Score</th><th>Изменение</th><th>Стоимость</th><th>Критические показатели</th></tr></thead><tbody>${data.results.map((item,index) => `<tr><th>${esc(item.name)}</th><td>${esc(item.simulation.event?.name || saved[index]?.event?.name || 'Без события')}</td><td>${num(item.simulation.score)}</td><td>${signed(item.simulation.delta)}</td><td>${num(item.simulation.total_cost)}</td><td>${num(item.simulation.n_crit)}</td></tr>`).join('')}</tbody></table></div><p class="muted">При разных событиях исходные показатели и бюджет различаются. Дельта каждого сценария рассчитана относительно его собственной базы.</p><div class="panel"><span class="badge">${data.source === 'fallback' ? 'Шаблонный анализ · без AI' : 'Анализ AI'}</span><p>${displayText(data.analysis)}</p></div>`;
   } catch (error) { notice(error.message); }
   finally { comparing = false; button.disabled = saved.length < 2; button.textContent = 'Сравнить сценарии'; }
 }
@@ -166,13 +208,13 @@ async function optimize() {
 }
 function availableBudget() { return state.budget - (selectedEvent?.budget_penalty ?? 0); }
 function eventSummary(event, budget) {
-  return event ? `<section class="panel event-context"><h3>Событие: ${esc(event.name)}</h3><p>${esc(event.description)}</p><p>Затронутый район: <strong>${esc(event.district || 'Все районы')}</strong>. На ликвидацию: <strong>${num(event.budget_penalty)}</strong>. Доступный бюджет: <strong>${num(budget)}</strong>.</p><p class="muted">Базовый Score и показатели «до» уже учитывают событие.</p></section>` : `<p class="note event-context">Рассчитанный сценарий: без события · доступный бюджет ${num(budget)}.</p>`;
+  return event ? `<section class="panel event-context"><h3>Событие: ${esc(event.name)}</h3><p>${displayText(event.description)}</p><p>Затронутый район: <strong>${esc(event.district || 'Все районы')}</strong>. На ликвидацию: <strong>${num(event.budget_penalty)}</strong>. Доступный бюджет: <strong>${num(budget)}</strong>.</p><p class="muted">Базовый Score и показатели «до» уже учитывают событие.</p></section>` : `<p class="note event-context">Рассчитанный сценарий: без события · доступный бюджет ${num(budget)}.</p>`;
 }
 function renderEvents() {
   $('#no-event').setAttribute('aria-pressed',String(!selectedEvent));
   $('#active-event').textContent = selectedEvent ? `${selectedEvent.name} · на ликвидацию ${num(selectedEvent.budget_penalty)} · бюджет ${num(availableBudget())}` : `Без события · бюджет ${num(availableBudget())}`;
   $('#optimizer-context').textContent = `${selectedEvent?.name || 'Без события'} · бюджет ${num(availableBudget())}`;
-  $('#event-list').innerHTML = events.map(event => `<article class="panel event-card ${selectedEvent?.id === event.id ? 'selected' : ''}"><h3>${esc(event.name)}</h3><p>${esc(event.description)}</p><div class="event-meta"><span>Затронутый район: <strong>${esc(event.district || 'Все районы')}</strong></span><span>Штраф бюджета: <strong>−${num(event.budget_penalty)}</strong></span><span>Доступный бюджет: <strong>${num(state.budget-event.budget_penalty)}</strong></span></div><p class="effects">${Object.entries(event.effects || {}).map(([id,value]) => `${esc(labels[id] || id)} ${signed(value)}`).join(' · ')}</p><button data-event="${esc(event.id)}" aria-pressed="${selectedEvent?.id === event.id}">${selectedEvent?.id === event.id ? 'Выбрано' : 'Выбрать событие'}</button></article>`).join('');
+  $('#event-list').innerHTML = events.map(event => `<article class="panel event-card ${selectedEvent?.id === event.id ? 'selected' : ''}"><h3>${esc(event.name)}</h3><p>${displayText(event.description)}</p><div class="event-meta"><span>Затронутый район: <strong>${esc(event.district || 'Все районы')}</strong></span><span>Штраф бюджета: <strong>−${num(event.budget_penalty)}</strong></span><span>Доступный бюджет: <strong>${num(state.budget-event.budget_penalty)}</strong></span></div><p class="effects">${Object.entries(event.effects || {}).map(([id,value]) => `${esc(labels[id] || id)} ${signed(value)}`).join(' · ')}</p><button data-event="${esc(event.id)}" aria-pressed="${selectedEvent?.id === event.id}">${selectedEvent?.id === event.id ? 'Выбрано' : 'Выбрать событие'}</button></article>`).join('');
 }
 function selectEvent(id) {
   if (!state) return;
@@ -215,9 +257,10 @@ function heatmaps(simulation) {
     const value = district[stage][id];
     const before = district.before[id];
     if (!Number.isFinite(value)) return '<td class="heat-missing">Нет данных</td>';
-    const delta = Number.isFinite(before) ? value-before : null;
-    const description = `${district.name}, ${labels[id]}: ${num(value)}${stage === 'after' ? `; изменение ${signed(delta)}` : ''}${value < 40 ? '; ниже критического порога 40' : ''}`;
-    return `<td class="${value < 40 ? 'heat-critical' : ''}" style="background-color:${heatColor(value)}" aria-label="${esc(description)}" title="${esc(description)}"><strong>${num(value)}${value < 40 ? ' !' : ''}</strong>${stage === 'after' ? `<small>Δ ${signed(delta)}</small>` : ''}</td>`;
+    const indicatorChange = Number.isFinite(before) ? value-before : null;
+    const showChange = stage === 'after' && Number.isFinite(indicatorChange) && Math.abs(indicatorChange) >= 0.005;
+    const description = `${district.name}, ${labels[id]}: ${num(value)}${showChange ? `; изменение ${signed(indicatorChange)}` : ''}${value < 40 ? '; ниже критического порога 40' : ''}`;
+    return `<td class="${value < 40 ? 'heat-critical' : ''}" style="background-color:${heatColor(value)}" aria-label="${esc(description)}" title="${esc(description)}"><strong>${num(value)}${value < 40 ? ' !' : ''}</strong>${showChange ? `<small class="${indicatorChange > 0 ? 'heat-gain' : 'heat-loss'}">Δ ${signed(indicatorChange)}</small>` : ''}</td>`;
   }).join('')}</tr>`).join('')}</tbody></table></div>`).join('');
   return `<section class="heatmap-section"><h3>Тепловая карта районов</h3><div class="heatmap-legend"><span class="heatmap-key"><span class="heatmap-swatch" aria-hidden="true"></span>Ниже 40 · критично</span><span class="heatmap-key">40 <span class="heatmap-gradient" aria-hidden="true"></span> 100 · лучше</span></div><p class="muted">${simulation.event ? 'Исходные значения уже учитывают событие. ' : ''}Дельта показывает изменение от мер. Значения и дельты округлены до двух знаков.</p>${tables}<p class="muted">${Object.entries(labels).map(([id,label]) => `${id} — ${label}`).join('; ')}.</p></section>`;
 }
@@ -229,9 +272,9 @@ function reportMarkup(snapshot, title) {
   }).join('');
   const districts = simulation.districts.map(district => {
     const changes = Object.keys(labels).filter(id => Number.isFinite(district.after[id]) && Number.isFinite(district.before[id])).map(id => ({id,delta:district.after[id]-district.before[id]})).filter(item => Math.abs(item.delta) >= 0.005).sort((a,b) => Math.abs(b.delta)-Math.abs(a.delta)).slice(0,3);
-    return `<tr><th scope="row">${esc(district.name)}</th><td>${num(district.score_before)} → ${num(district.score_after)}<br>Δ ${signed(district.score_after-district.score_before)}</td><td>${changes.length ? `<ul>${changes.map(item => `<li>${esc(labels[item.id])}: ${num(district.before[item.id])} → ${num(district.after[item.id])} (Δ ${signed(item.delta)})</li>`).join('')}</ul>` : 'Показатели не изменились.'}</td></tr>`;
+    return `<tr><th scope="row">${esc(district.name)}</th><td>${num(district.score_before)} → ${num(district.score_after)}</td><td>${changes.length ? `<ul>${changes.map(item => `<li>${esc(labels[item.id])}: ${num(district.before[item.id])} → ${num(district.after[item.id])} (Δ ${signed(item.delta)})</li>`).join('')}</ul>` : 'Показатели не изменились.'}</td></tr>`;
   }).join('');
-  return `<p class="eyebrow">АКИМ НА 5 ЧАСОВ · АСТАНА</p><h1>${esc(title)}</h1><p>Программа развития города на 8 кварталов</p>${eventSummary(snapshot.event,snapshot.budget)}<div class="stats"><div class="stat"><span>Score: было → стало</span><strong>${num(simulation.base_score)} → ${num(simulation.score)}</strong><p>Изменение: ${signed(simulation.delta)}</p></div><div class="stat"><span>Стоимость мер / бюджет</span><strong>${num(simulation.total_cost)} / ${num(snapshot.budget)}</strong><p>Остаток: ${num(simulation.budget_left)}</p></div><div class="stat"><span>Критических показателей</span><strong>${num(simulation.n_crit)}</strong><p>Самый слабый район: ${esc(simulation.min_district.name)} · ${num(simulation.min_district.score)}</p></div></div><h2>Выбранные меры</h2><table class="report-table"><thead><tr><th>Мера</th><th>Район</th><th>Стоимость</th></tr></thead><tbody>${measures}</tbody></table><h2>Главные изменения по районам</h2><p class="muted">До трёх самых больших изменений по модулю для каждого района. База сравнения учитывает выбранное событие.</p><table class="report-table"><thead><tr><th>Район</th><th>Оценка до → после</th><th>Изменения показателей</th></tr></thead><tbody>${districts}</tbody></table><h2>Анализ программы</h2>${snapshot.analysis ? analysisMarkup(snapshot) : `<p>${esc(snapshot.analysisError || 'Анализ недоступен.')}</p>`}<p class="report-footer">Учебная модель. Числа считает движок, AI объясняет результат. Значения округлены до двух знаков.</p>`;
+  return `<p class="eyebrow">АКИМ НА 5 ЧАСОВ · АСТАНА</p><h1>${esc(title)}</h1><p>Программа развития города на 8 кварталов</p>${eventSummary(snapshot.event,snapshot.budget)}<div class="stats"><div class="stat"><span>Score: было → стало</span><strong>${num(simulation.base_score)} → ${num(simulation.score)}</strong><p>Изменение: ${signed(simulation.delta)}</p></div><div class="stat"><span>Стоимость мер / бюджет</span><strong>${num(simulation.total_cost)} / ${num(snapshot.budget)}</strong><p>Остаток: ${num(simulation.budget_left)}</p></div><div class="stat"><span>Критических показателей</span><strong>${num(simulation.n_crit)}</strong><p>Самый слабый район: ${esc(simulation.min_district.name)} · ${num(simulation.min_district.score)}</p></div></div><h2>Выбранные меры</h2><table class="report-table"><thead><tr><th>Мера</th><th>Район</th><th>Стоимость</th></tr></thead><tbody>${measures}</tbody></table><h2>Главные изменения по районам</h2><p class="muted">До трёх самых больших изменений по модулю для каждого района. База сравнения учитывает выбранное событие.</p><table class="report-table"><thead><tr><th>Район</th><th>Оценка до → после</th><th>Изменения показателей</th></tr></thead><tbody>${districts}</tbody></table><h2>Анализ программы</h2>${snapshot.analysis ? analysisMarkup(snapshot) : `<p>${displayText(snapshot.analysisError || 'Анализ недоступен.')}</p>`}<p class="report-footer">Учебная модель. Числа считает движок, AI объясняет результат. Значения округлены до двух знаков.</p>`;
 }
 function openReport() {
   if (!result || $('#report-button').disabled) return;
@@ -264,6 +307,10 @@ $('#validation').addEventListener('click',event => { if (event.target.id === 're
 $('#clear').addEventListener('click',() => { if (!state) return; decisions = []; renderCatalog(); validateSelection(); });
 $('#calculate').addEventListener('click',calculate);
 $('#report-button').addEventListener('click',openReport);
+$('#result-content').addEventListener('click',event => {
+  const button = event.target.closest('button[data-recommendation]');
+  if (button && !button.disabled) applyRecommendation(Number(button.dataset.recommendation));
+});
 $('#no-event').addEventListener('click',() => selectEvent(null));
 $('#retry-events').addEventListener('click',loadEvents);
 $('#event-list').addEventListener('click',event => {
