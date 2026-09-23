@@ -3,149 +3,390 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Кабинет акима — Аким на 5 часов</title>
+  <title>Аким на 5 часов — Астана</title>
+  <meta name="theme-color" content="#102F35">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <meta name="theme-color" content="#0B1F2A">
+  <link rel="preload" as="image" href="/v2/assets/hero-city.jpg">
   <link rel="stylesheet" href="/v2/styles.css">
 </head>
-<body>
+<body data-page="city">
   <a class="skip-link btn btn-primary" href="#main">Перейти к содержимому</a>
-  <aside class="sidebar glass">
-    <a class="brand-icon" href="#city" aria-label="Аким на 5 часов — город">А</a>
+  <header class="topbar">
+    <a class="brand" href="#city"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 21c0-7 2-12 8-16-1 7-3 12-8 16Zm0 0c0-6-2-10-7-13 1 6 3 10 7 13Z"/></svg><span>Аким<br>на 5 часов</span></a>
     <nav aria-label="Разделы симулятора">
-      <button type="button" data-page="city" class="active" aria-label="Город" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 21V9h6V3h6v10h6v8H3Z M6 12v2m0 3v2m6-13v2m0 3v2m0 3v3m6-3v3"/></svg><span class="nav-label">Город</span></button>
-      <button type="button" data-page="decisions" aria-label="Решения"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 5h12M9 12h12M9 19h12M3 5l1 1 2-3M3 12l1 1 2-3M3 19l1 1 2-3"/></svg><span class="nav-label">Решения</span></button>
-      <button type="button" data-page="result" aria-label="Результат"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 3v18h17M8 17v-5m5 5V8m5 9V4"/></svg><span class="nav-label">Результат</span></button>
-      <button type="button" data-page="compare" aria-label="Сравнение"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="5" width="7" height="15" rx="2"/><rect x="14" y="3" width="7" height="17" rx="2"/></svg><span class="nav-label">Сравнение</span></button>
-      <button type="button" data-page="optimizer" aria-label="Оптимизатор"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-8l1-7Z"/></svg><span class="nav-label">Оптимизатор</span></button>
-      <button type="button" data-page="events" aria-label="События"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 17h14l-2-4V9a5 5 0 0 0-10 0v4l-2 4ZM10 21h4M12 2v2"/></svg><span class="nav-label">События</span></button>
-      <button type="button" data-page="agent" aria-label="AI-аким"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z"/></svg><span class="nav-label">AI-аким</span></button>
+      <button type="button" data-page="city" class="active" aria-current="page">Город</button>
+      <button type="button" data-page="decisions">Решения</button>
+      <button type="button" data-page="result">Результат</button>
+      <button type="button" data-page="compare">Сравнение</button>
+      <button type="button" data-page="optimizer">Оптимизатор</button>
+      <button type="button" data-page="events">События</button>
+      <button type="button" data-page="agent">AI-аким</button>
     </nav>
-    <span class="sidebar-caption">АСТАНА · 8 КВАРТАЛОВ</span>
-  </aside>
+    <span class="topbar-side" aria-hidden="true">RU</span>
+  </header>
+  <div id="event-topbar" class="event-topbar" role="status" hidden></div>
+  <div id="event-toast" class="event-toast" role="status" aria-live="polite" hidden></div>
   <main id="main" tabindex="-1">
-    <header class="header"><a class="brand" href="#city">Аким на 5 часов<small>Кабинет городских решений</small></a><span class="city-label">АСТАНА · ГОРИЗОНТ 8 КВАРТАЛОВ</span></header>
-    <div id="event-topbar" class="event-topbar" role="status" hidden></div>
-    <div class="hero" id="hero">
-      <div class="hero-sky" id="skyline" aria-hidden="true"></div>
-      <div class="hero-inner">
-        <div class="hero-copy">
-          <p class="eyebrow">ВАШ ГОРОД. ВАШИ РЕШЕНИЯ.</p>
-          <h1>Город оживает<br>от пяти решений.</h1>
-          <p>У вас 100 единиц бюджета и пять районов Астаны. Соберите программу — и посмотрите, как в окнах зажигается свет.</p>
-          <div class="hero-actions"><a class="btn btn-accent" href="#decisions">Собрать программу →</a><a class="btn btn-glass" href="#agent">Спросить AI-акима</a></div>
-          <ul class="hero-legend" aria-label="Как читать панораму"><li><i class="dot windows"></i>Окна — качество жизни</li><li><i class="dot trees"></i>Деревья — озеленение</li><li><i class="dot cars"></i>Машины — разгрузка дорог</li></ul>
-        </div>
-        <div class="hero-score card-ink" aria-live="polite" aria-atomic="true">
-          <span id="hero-score-label">Базовый индекс · без события</span>
-          <div class="score-ring" id="score-ring" data-band="mid"><strong id="base-score" class="display" data-countup data-count-from="0">—</strong></div>
-          <span id="hero-score-delta" class="hero-score-delta" hidden></span>
-          <span class="hero-score-caption">Astana Quality of Life Score</span>
-        </div>
+    <section class="hero" id="hero" aria-label="Астана">
+      <img class="hero-photo" src="/v2/assets/hero-city.jpg" alt="" width="1920" height="1080" fetchpriority="high">
+      <div class="hero-light cool" aria-hidden="true"></div>
+      <div class="hero-light warm" aria-hidden="true"></div>
+      <div class="hero-grid" aria-hidden="true"></div>
+      <div class="hero-title" aria-hidden="true">АСТАНА</div>
+      <img class="hero-cutout" src="/v2/assets/bayterek-cutout.png" alt="" width="720" height="1080">
+      <div class="hero-copy">
+        <h1>Город начинается<br>с ваших решений</h1>
+        <p>Реальный город. Реальные вызовы.<br>Попробуйте, каким будет завтра.</p>
+        <a class="btn btn-accent hero-cta" href="#decisions">Начать управление <span aria-hidden="true">→</span></a>
+        <dl class="hero-stats" aria-live="polite">
+          <div><dt id="hero-score-label">Текущий Score города</dt><dd><strong id="base-score" class="score" data-countup>—</strong><span id="hero-score-delta" class="hero-score-delta" hidden></span></dd></div>
+          <div><dt>Бюджет</dt><dd><strong class="budget" data-mirror="budget">100</strong></dd></div>
+        </dl>
+        <p class="hero-pending" id="hero-pending" role="status" hidden>Считаем результат…</p>
       </div>
-    </div>
-    <div id="event-alert" class="event-alert" role="alert" aria-live="assertive" hidden></div>
+      <p class="hero-side" aria-hidden="true">Большие<br>возможности<br>начинаются<br>здесь</p>
+      <p class="hero-corner" aria-hidden="true">Астана<br>Казахстан</p>
+    </section>
+    <ul class="hero-districts" id="hero-districts" aria-label="Районы Астаны">
+      <li data-district="Есиль"><strong>Есиль</strong><span>Деловой центр, пробки на мостах</span><em data-countup>—</em></li>
+      <li data-district="Алматы"><strong>Алматы</strong><span>Старое ЖКХ</span><em data-countup>—</em></li>
+      <li data-district="Сарыарка"><strong>Сарыарка</strong><span>Смог и мало зелени</span><em data-countup>—</em></li>
+      <li data-district="Байконур"><strong>Байконур</strong><span>Без ярких перекосов</span><em data-countup>—</em></li>
+      <li data-district="Нура"><strong>Нура</strong><span>Отстаёт в соцсфере и транспорте</span><em data-countup>—</em></li>
+    </ul>
     <div id="notice" role="alert" hidden></div>
     <p id="loading" role="status">Загружаем данные города…</p>
     <section id="city" class="page" aria-labelledby="city-title">
-      <div class="section-heading"><div><p class="eyebrow">01 / ТОЧКА ОТСЧЁТА</p><h2 id="city-title">Пять районов — один город</h2></div><a class="btn btn-glass" href="#decisions">Перейти к решениям →</a></div>
-      <div class="city-layout"><div id="districts" class="district-grid"></div><div class="card glass map-card"><div class="map-heading"><div><p class="eyebrow">АСТАНА</p><h2>Город в деталях</h2></div><span class="chip">5 районов</span></div><div id="city-map" role="region" aria-label="Карта районов Астаны"></div><div class="map-legend"><span><i class="crit"></i>Ниже 40</span><span><i class="low"></i>40–55</span><span><i></i>55–65</span><span><i class="good"></i>Выше 65</span></div></div></div>
+      <div class="section-heading"><div><p class="eyebrow">Астана сегодня</p><h2 id="city-title">Пять районов — один город</h2></div><a class="btn btn-glass" href="#decisions">К решениям →</a></div>
+      <div class="city-layout"><div id="districts" class="district-grid"></div><div class="card map-card"><div class="map-heading"><div><p class="eyebrow">Карта</p><h2>Районы и показатели</h2></div><span class="chip">5 районов</span></div><div id="city-map" role="region" aria-label="Карта районов Астаны"></div><div class="map-legend"><span><i class="crit"></i>Ниже 40 · критично</span><span><i class="low"></i>40–55</span><span><i></i>55–65</span><span><i class="good"></i>Выше 65</span></div></div></div>
       <p class="note">Все показатели от 0 до 100: больше — лучше. Индекс учитывает среднюю оценку, самый слабый район и число критических показателей.</p>
     </section>
     <section id="decisions" class="page" aria-labelledby="decisions-title" hidden>
-      <div class="section-heading"><div><p class="eyebrow">02 / ВАША ПРОГРАММА</p><h2 id="decisions-title">Пять шагов к лучшему городу</h2></div><div class="actions"><button id="demo" class="btn btn-glass secondary" disabled>Демо-сценарий</button><button id="clear" class="btn btn-glass secondary">Сбросить выбор</button></div></div>
-      <div class="decision-layout"><div id="catalog"></div><aside class="budget-panel card"><p class="eyebrow">БЮДЖЕТ ПРОГРАММЫ</p><h3>Ресурсы для перемен</h3><p id="active-event" class="muted" aria-live="polite">Без события</p><span class="label">Осталось</span><strong id="remaining" class="display" data-countup>100</strong><div class="budget-number">Использовано <strong id="cost" data-countup>0</strong> из <span id="budget">100</span></div><div class="budget-segments-wrap"><span class="label">По направлениям</span><div id="budget-segments" aria-label="Распределение бюджета по направлениям"></div><ul class="budget-legend" aria-hidden="true"><li data-direction="T"><i></i>Транспорт</li><li data-direction="E"><i></i>Экология</li><li data-direction="S"><i></i>Соцсфера</li><li data-direction="B"><i></i>Безопасность</li><li data-direction="C"><i></i>Сервисы</li></ul></div><progress id="budget-bar" value="0" max="100" aria-label="Использованный бюджет"></progress><p>Выбрано мер: <strong id="count">0 / 5</strong></p><p class="muted">Не больше двух мер из одного направления. Для районных мер выберите район.</p><div id="validation" aria-live="polite"></div><button id="calculate" class="btn btn-accent" disabled>Рассчитать результат →</button></aside></div>
+      <div class="section-heading"><div><p class="eyebrow">Решения</p><h2 id="decisions-title">Пять решений для города</h2><p class="lead">Выбирайте меры, которые сделают Астану комфортнее, современнее и устойчивее.</p></div><div class="actions"><button id="demo" class="btn btn-glass secondary" disabled>Демо-сценарий</button><button id="clear" class="btn btn-glass secondary">Сбросить выбор</button></div></div>
+      <div class="decision-layout">
+        <div id="catalog"></div>
+        <aside class="budget-panel card-ink">
+          <p class="eyebrow">Бюджет</p>
+          <p id="active-event" class="muted" aria-live="polite">Без события</p>
+          <dl class="budget-figures">
+            <div><dt>Доступно</dt><dd><strong id="budget" class="budget">100</strong></dd></div>
+            <div><dt>Выбрано</dt><dd><strong id="cost" class="budget" data-countup>0</strong></dd></div>
+            <div><dt>Остаток</dt><dd><strong id="remaining" class="budget" data-countup>100</strong></dd></div>
+          </dl>
+          <div class="budget-segments-wrap"><div id="budget-segments" aria-label="Полоса расходов по выбранным мерам"></div></div>
+          <div class="budget-loss-track" id="budget-loss-track" hidden><div id="budget-loss" class="budget-loss"></div></div>
+          <p class="budget-loss-note" id="budget-loss-note" hidden></p>
+          <progress id="budget-bar" value="0" max="100" aria-label="Использованный бюджет"></progress>
+          <p class="slots-title">Выберите <strong>ровно 5 решений</strong> · <span id="count">0 / 5</span></p>
+          <ol class="slots" id="slots" aria-label="Выбранные решения"></ol>
+          <div id="validation" aria-live="polite"></div>
+          <button id="calculate" class="btn btn-accent" disabled>Рассчитать результат →</button>
+          <p class="muted small">Не больше двух мер из одного направления. Для районных мер выберите район.</p>
+        </aside>
+      </div>
     </section>
     <section id="result" class="page" aria-labelledby="result-title" hidden>
-      <div class="section-heading"><div><p class="eyebrow">03 / ЭФФЕКТ ПРОГРАММЫ</p><h2 id="result-title">Что изменится за 8 кварталов</h2></div><button id="report-button" class="btn btn-glass" disabled>Сформировать отчёт</button></div>
+      <div class="result-hero" id="result-hero">
+        <div class="result-hero-copy">
+          <p class="eyebrow">Астана сегодня</p>
+          <h2 id="result-title">Город изменился</h2>
+          <p class="lead" id="result-lead">Выберите валидный набор из пяти мер и нажмите «Рассчитать».</p>
+          <div class="result-score"><strong id="result-score" class="score">—</strong><span class="result-delta" id="result-delta" hidden></span></div>
+          <p class="result-base" id="result-base"></p>
+          <p class="stale-note" id="stale-note" hidden>Набор изменился после расчёта — результат устарел. Нажмите «Рассчитать» ещё раз.</p>
+        </div>
+        <figure class="result-photo"><img src="/v2/assets/hero-result.jpg" alt="" width="1920" height="1080" loading="lazy"><div class="hero-light warm" aria-hidden="true"></div><figcaption>Современный город<br>для больших людей</figcaption></figure>
+      </div>
+      <div class="section-heading compact"><div><p class="eyebrow">Итоги</p><h2>Что изменится за 8 кварталов</h2></div><button id="report-button" class="btn btn-glass" disabled>Сформировать отчёт</button></div>
       <div id="result-content" class="empty">Выберите валидный набор из пяти мер и нажмите «Рассчитать».</div>
       <div id="save-panel" class="panel card" hidden><label for="scenario-name">Название сценария</label><div class="inline"><input id="scenario-name" maxlength="80" placeholder="Например, Забота о Нуре"><button id="save" class="btn btn-primary">Сохранить для сравнения</button></div><p id="save-status" role="status"></p></div>
     </section>
     <section id="compare" class="page" aria-labelledby="compare-title" hidden>
-      <div class="section-heading"><div><p class="eyebrow">04 / НАЙДИТЕ БАЛАНС</p><h2 id="compare-title">Разные решения. Разное будущее.</h2></div><button id="compare-button" class="btn btn-accent" disabled>Сравнить сценарии</button></div><p class="muted">Сохраните от двух до трёх рассчитанных сценариев. Каждый сохраняет своё событие. Сценарии хранятся в этой вкладке до перезагрузки страницы.</p><div id="saved" class="cards"></div><div id="comparison" aria-live="polite"></div>
+      <div class="section-heading"><div><p class="eyebrow">Сравнение</p><h2 id="compare-title">Разные решения. Разное будущее.</h2></div><button id="compare-button" class="btn btn-accent" disabled>Сравнить сценарии</button></div><p class="muted">Сохраните от двух до трёх рассчитанных сценариев. Каждый сохраняет своё событие. Сценарии хранятся в этой вкладке до перезагрузки страницы.</p><div id="saved" class="cards"></div><div id="comparison" aria-live="polite"></div>
     </section>
     <section id="optimizer" class="page" aria-labelledby="optimizer-title" hidden>
-      <div class="section-heading"><div><p class="eyebrow">05 / ПОМОЩЬ В ПЛАНИРОВАНИИ</p><h2 id="optimizer-title">Больше пользы на тот же бюджет</h2></div><button id="optimize" class="btn btn-accent">Найти лучший набор</button></div><p class="muted">Движок подберёт пять лучших наборов по Score с учётом бюджета и ограничений. AI не участвует в расчёте чисел.</p><p id="optimizer-context" class="note event-context" aria-live="polite">Без события · бюджет 100</p><div id="optimal" class="cards" aria-live="polite"></div>
+      <div class="section-heading"><div><p class="eyebrow">Оптимизатор</p><h2 id="optimizer-title">Больше пользы на тот же бюджет</h2></div><button id="optimize" class="btn btn-accent">Найти лучший набор</button></div><p class="muted">Движок перебирает все допустимые наборы по Score с учётом бюджета и ограничений. AI не участвует в расчёте чисел.</p><p id="optimizer-context" class="note event-context" aria-live="polite">Без события · бюджет 100</p><div id="optimal" class="cards" aria-live="polite"></div>
     </section>
     <section id="events" class="page" aria-labelledby="events-title" hidden>
-      <div class="section-heading"><div><p class="eyebrow">06 / ГОРОДСКАЯ ПОВЕСТКА</p><h2 id="events-title">Когда город меняет ваши планы</h2></div><div class="actions"><button id="no-event" class="btn btn-glass secondary" aria-pressed="true" disabled>Без события</button><button id="retry-events" class="btn btn-glass secondary" disabled>Обновить события</button></div></div><div id="event-banner" class="event-banner" role="status" hidden></div><p class="muted">Событие меняет исходные показатели и уменьшает бюджет на ликвидацию последствий. После выбора набор мер проверяется заново.</p><p id="events-status" role="status">Загружаем события…</p><div id="event-list" class="cards"></div>
+      <div class="section-heading"><div><p class="eyebrow">События</p><h2 id="events-title">Когда город меняет ваши планы</h2></div><div class="actions"><button id="no-event" class="btn btn-glass secondary" aria-pressed="true" disabled>Без события</button><button id="retry-events" class="btn btn-glass secondary" disabled>Обновить события</button></div></div><div id="event-banner" class="event-banner" role="status" hidden></div><p class="muted">Событие меняет исходные показатели и уменьшает бюджет на ликвидацию последствий. После выбора набор мер проверяется заново.</p><p id="events-status" role="status">Загружаем события…</p><div id="event-list" class="cards"></div>
     </section>
     <section id="agent" class="page" aria-labelledby="agent-title" hidden>
-      <div class="section-heading"><div><p class="eyebrow">07 / ВАШ AI-СОВЕТНИК</p><h2 id="agent-title">Каким вы хотите видеть город?</h2></div><span class="chip">От цели к программе</span></div>
-      <div class="agent-layout"><div class="card"><label for="agent-goal">Задача для AI-акима</label><textarea id="agent-goal" placeholder="Например, улучшить доступность школ и поликлиник в Нуре, сохранив баланс бюджета."></textarea><p class="note">Опишите приоритеты. AI предложит программу, а движок проверит ограничения и рассчитает её результат.</p><button id="agent-run" type="button" class="btn btn-accent">Спросить AI-акима</button><p id="agent-status" role="status" aria-live="polite"></p></div><div><p class="eyebrow">ХОД РАБОТЫ</p><h2>От замысла к решению</h2><div id="agent-steps" role="log" aria-live="polite"></div></div></div><div id="agent-result" aria-live="polite"></div>
+      <figure class="agent-banner"><img src="/v2/assets/hero-agent.jpg" alt="" width="1920" height="640" loading="lazy"><figcaption><span>Больше данных<br>больше возможностей<br>лучшей Астане</span><span>Город<br>в твоих<br>решениях</span></figcaption></figure>
+      <div class="agent-layout">
+        <div>
+          <p class="eyebrow">Ваш AI-помощник</p>
+          <h2 id="agent-title" class="agent-title">AI-аким</h2>
+          <label for="agent-goal" class="agent-label">Какой вы хотите видеть Астану?</label>
+          <textarea id="agent-goal" placeholder="Например, подтянуть Нуру, сохранив общий Score."></textarea>
+          <p class="note">Опишите приоритеты. AI предложит программу, а движок проверит ограничения и рассчитает результат — каждый шаг ниже настоящий.</p>
+          <button id="agent-run" type="button" class="btn btn-accent">Спросить AI-акима</button>
+          <p id="agent-status" role="status" aria-live="polite"></p>
+          <div id="agent-steps" role="log" aria-live="polite"></div>
+        </div>
+        <aside class="agent-plan card-ink"><p class="eyebrow">План действий</p><h3>Рекомендации AI-акима</h3><div id="agent-result" aria-live="polite"></div><p class="muted small" id="agent-plan-empty">Здесь появится проверенный набор из пяти мер и кнопка применения.</p></aside>
+      </div>
     </section>
     <footer>Аким на 5 часов <span>Учебная модель · Числа считает движок, AI объясняет результат</span></footer>
   </main>
   <script>
     (() => {
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+      const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+      const ru = value => Number(value).toLocaleString('ru-RU', { maximumFractionDigits: 2 });
       const band = value => value < 40 ? 'crit' : value < 55 ? 'low' : value <= 65 ? 'mid' : 'good';
-      const iconPaths = {T:'M5 17V5h14v12H5Zm2 0v3m10-3v3M5 10h14M8 14h1m6 0h1',E:'M12 21V10m0 5C3 15 3 5 3 5s9 0 9 10Zm0-3C12 3 21 3 21 3s0 9-9 9Z',S:'M3 10 12 4l9 6-9 6-9-6Zm4 3v5l5 3 5-3v-5',B:'M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Zm-4 9 3 3 5-6',C:'M5 4h14v13H9l-4 4V4Zm4 5h6m-6 4h4'};
-      const addIcon = (element,direction) => {
-        const icon = document.createElement('span');
-        icon.className = 'dir-icon';
-        icon.dataset.direction = direction;
-        icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="' + iconPaths[direction] + '"/></svg>';
-        element.prepend(icon);
-      };
+      const photos = { T: 'transport', E: 'ecology', S: 'social', B: 'safety', C: 'services' };
+      const labelsRu = { T1:'Разгрузка дорог',T2:'Доступность ОТ',E1:'Озеленение',E2:'Качество воздуха',S1:'Школы и детсады',S2:'Поликлиники',B1:'Безопасность улиц',B2:'Безопасность дорожного движения',C1:'Надёжность ЖКХ',C2:'Скорость решения обращений' };
+      const analysisTitles = { 'Сильные стороны': 'Что улучшилось', 'Компромиссы': 'Чем пришлось пожертвовать', 'Риски': 'Что осталось критичным', 'Рекомендации': 'Что попробовать иначе' };
+      const local = { state: null, events: [], lastResult: null, pending: 0 };
+
+      const parseNumber = text => { const cleaned = String(text).trim().replace(/\s/g, '').replace(',', '.'); return /^[-+]?\d+(\.\d+)?$/.test(cleaned) ? Number(cleaned) : null; };
+
+      function mirrorBudget() {
+        const source = document.querySelector('#budget');
+        document.querySelectorAll('[data-mirror="budget"]').forEach(node => { node.textContent = source.textContent; });
+      }
+
+      function renderSlots() {
+        const list = document.querySelector('#slots');
+        const chosen = typeof decisions !== 'undefined' ? decisions : [];
+        const measures = local.state?.measures || [];
+        list.innerHTML = Array.from({ length: 5 }, (_, index) => {
+          const item = chosen[index];
+          if (!item) return `<li class="slot empty"><span class="slot-number">${index + 1}</span><span class="slot-text">Выберите решение</span></li>`;
+          const measure = measures.find(entry => entry.id === item.measure_id);
+          const cost = measure ? `${ru(measure.cost)} ед.` : '';
+          const place = measure?.type === 'C' ? 'весь город' : (item.district || 'район не выбран');
+          return `<li class="slot filled" data-direction="${measure?.direction || ''}"><span class="slot-number">${index + 1}</span><span class="slot-text"><strong>${measure?.name || item.measure_id}</strong><small>${place} · ${cost}</small></span></li>`;
+        }).join('');
+      }
+
+      function renderBudgetLoss() {
+        const loss = document.querySelector('#budget-loss');
+        const note = document.querySelector('#budget-loss-note');
+        const active = typeof selectedEvent !== 'undefined' ? selectedEvent : null;
+        const total = local.state?.budget || 100;
+        const track = document.querySelector('#budget-loss-track');
+        if (!active) { track.hidden = true; note.hidden = true; return; }
+        track.hidden = false;
+        loss.style.width = `${(active.budget_penalty / total) * 100}%`;
+        loss.title = `Потеря бюджета: ${ru(active.budget_penalty)}`;
+        note.hidden = false;
+        note.textContent = `Событие «${active.name}»: −${ru(active.budget_penalty)} ед. на ликвидацию, доступно ${ru(total - active.budget_penalty)}.`;
+      }
+
+      function enhanceCatalog() {
+        document.querySelectorAll('#catalog .measure-grid').forEach((group, index) => {
+          const direction = ['T', 'E', 'S', 'B', 'C'][index];
+          group.querySelectorAll('.measure').forEach(row => {
+            row.dataset.direction = direction;
+            if (!row.querySelector('.measure-photo')) {
+              const photo = document.createElement('div');
+              photo.className = 'measure-photo';
+              photo.style.backgroundImage = `url('/v2/assets/dir-${photos[direction]}.jpg')`;
+              row.prepend(photo);
+            }
+            const lagNode = row.querySelector('small.muted');
+            if (lagNode && !row.querySelector('.measure-start')) {
+              const lag = parseNumber((lagNode.textContent.match(/Лаг:\s*([\d,]+)/) || [])[1] ?? '');
+              if (lag != null) {
+                const start = document.createElement('span');
+                start.className = 'measure-start';
+                start.textContent = `Начало эффекта: ${lag + 1}-й квартал`;
+                lagNode.replaceWith(start);
+              }
+            }
+          });
+        });
+      }
+
+      function enhanceDistricts() {
+        document.querySelectorAll('#districts .district').forEach(element => {
+          if (element.querySelector('details')) return;
+          const indicators = [...element.querySelectorAll('.indicator')];
+          const values = indicators.map(item => parseNumber(item.querySelector('strong').textContent.replace(' !', '')));
+          const lowest = values.indexOf(Math.min(...values));
+          const critical = values.filter(value => value < 40).length;
+          const summary = document.createElement('p');
+          summary.className = 'district-summary';
+          summary.innerHTML = `Слабый показатель: ${indicators[lowest]?.querySelector('.indicator-head span').textContent} · ${ru(values[lowest])}${critical ? ` · <b class="critical">Критично: ${critical}</b>` : ''}`;
+          const details = document.createElement('details');
+          const toggle = document.createElement('summary');
+          toggle.textContent = 'Все показатели';
+          details.append(toggle, ...indicators);
+          element.append(summary, details);
+          const name = element.querySelector('h3')?.textContent;
+          const district = local.state?.districts?.find(item => item.name === name);
+          if (district && !element.querySelector('.district-score')) {
+            const score = document.createElement('strong');
+            score.className = 'district-score';
+            score.setAttribute('data-countup', '');
+            score.textContent = ru(district.base_score);
+            element.append(score);
+          }
+        });
+      }
+
+      function enhanceResult() {
+        const content = document.querySelector('#result-content');
+        if (!content || content.classList.contains('empty')) return;
+        document.querySelectorAll('.heatmap td strong').forEach(element => { element.parentElement.dataset.scoreBand = band(parseNumber(element.textContent.replace(' !', '')) ?? 0); element.parentElement.style.removeProperty('background-color'); });
+        const heat = content.querySelector('.heatmap-section');
+        if (heat && !heat.closest('details')) {
+          const details = document.createElement('details');
+          details.className = 'card fold';
+          details.innerHTML = '<summary>Тепловая карта районов · до и после</summary>';
+          heat.replaceWith(details);
+          details.append(heat);
+        }
+        const firstTable = [...content.querySelectorAll(':scope > h3')].find(node => node.textContent.startsWith('Показатели районов'));
+        if (firstTable && !firstTable.closest('details')) {
+          const details = document.createElement('details');
+          details.className = 'card fold';
+          details.innerHTML = '<summary>Как рассчитано · формула и вклад мер</summary><p class="formula">Score = 0,7 × среднее по городу + 0,3 × слабейший район − число критических показателей. Эффект меры учитывается с множителем (8 − лаг) / 8, синергии лагом не масштабируются.</p>';
+          const nodes = [];
+          let node = firstTable;
+          while (node && !(node.id === 'analysis-content' || (node.tagName === 'H3' && node.textContent.startsWith('Объяснение')))) { nodes.push(node); node = node.nextElementSibling; }
+          firstTable.before(details);
+          nodes.forEach(item => details.append(item));
+        }
+        content.querySelectorAll('#analysis-content .panel h3').forEach(node => { if (analysisTitles[node.textContent]) node.textContent = analysisTitles[node.textContent]; });
+        content.querySelectorAll('#analysis-content .panel').forEach(panel => { const title = panel.querySelector('h3')?.textContent; panel.classList.toggle('secondary-block', title === 'Итог' || title === 'Последствия'); });
+      }
+
+      function renderResultHero() {
+        const simulation = local.lastResult;
+        const title = document.querySelector('#result-title');
+        const lead = document.querySelector('#result-lead');
+        const scoreNode = document.querySelector('#result-score');
+        const delta = document.querySelector('#result-delta');
+        const base = document.querySelector('#result-base');
+        if (!simulation) return;
+        title.textContent = simulation.delta > 0 ? 'Город стал лучше' : 'Город изменился';
+        lead.textContent = simulation.delta > 0 ? 'Ваши решения меняют реальность.' : 'Решения приняты, но балл не вырос. Посмотрите, что можно сделать иначе.';
+        scoreNode.textContent = ru(simulation.score);
+        delta.hidden = false;
+        delta.textContent = `${simulation.delta > 0 ? '+' : ''}${ru(simulation.delta)} балла`;
+        delta.className = `result-delta ${simulation.delta > 0 ? 'positive' : simulation.delta < 0 ? 'negative' : ''}`;
+        base.textContent = `${ru(simulation.base_score)} → ${ru(simulation.score)} · бюджет ${ru(simulation.total_cost)} из ${ru(simulation.budget)} · критических показателей: ${ru(simulation.n_crit)}`;
+        document.querySelector('#stale-note').hidden = true;
+      }
+
+      function comeAlive(simulation) {
+        const body = document.body;
+        body.classList.remove('alive', 'alive-2');
+        body.classList.toggle('has-result', true);
+        body.classList.toggle('result-positive', simulation.delta > 0);
+        if (simulation.delta <= 0) return;
+        const step = (ms, fn) => setTimeout(fn, reduced.matches ? 0 : ms);
+        step(400, () => body.classList.add('alive'));
+        step(1200, () => body.classList.add('alive-2'));
+      }
+
+      function markStale() {
+        const current = typeof decisions !== 'undefined' ? decisions : [];
+        const previous = typeof result !== 'undefined' && result ? result.decisions : null;
+        const stale = Boolean(previous) && JSON.stringify(current) !== JSON.stringify(previous);
+        document.body.classList.toggle('stale-result', stale);
+        const note = document.querySelector('#stale-note');
+        if (note) note.hidden = !stale;
+      }
+
+      function showEventToast(name) {
+        const event = local.events.find(item => item.name === name);
+        const toast = document.querySelector('#event-toast');
+        if (!toast || !event) return;
+        const total = local.state?.budget || 100;
+        toast.innerHTML = `<span class="event-toast-dot" aria-hidden="true"></span><div><strong>${event.name}</strong><span>${event.district ? `Район ${event.district}` : 'Все районы'} · бюджет ${ru(total)} → <b>${ru(total - event.budget_penalty)}</b> · пересмотрите решения</span></div><a class="btn btn-glass" href="#decisions">К решениям</a>`;
+        toast.hidden = false;
+        clearTimeout(showEventToast.timer);
+        showEventToast.timer = setTimeout(() => { toast.hidden = true; }, 6000);
+      }
+
+      let lastEventName = null;
+      function watchEvent() {
+        const label = document.querySelector('#active-event');
+        const observer = new MutationObserver(() => {
+          const text = label.textContent || '';
+          const name = text.startsWith('Без события') ? null : text.split(' · ')[0].trim();
+          document.body.classList.toggle('has-event', Boolean(name));
+          const topbar = document.querySelector('#event-topbar');
+          const event = local.events.find(item => item.name === name);
+          topbar.hidden = !name;
+          topbar.innerHTML = name ? `<span class="event-toast-dot" aria-hidden="true"></span><strong>${name}</strong><span>${event?.district ? `район ${event.district}` : 'весь город'} · доступно ${ru((local.state?.budget || 100) - (event?.budget_penalty || 0))}</span><a class="btn btn-glass" href="#decisions">Пересмотреть решения</a>` : '';
+          if (name && name !== lastEventName) showEventToast(name);
+          lastEventName = name;
+          renderBudgetLoss();
+          mirrorBudget();
+        });
+        observer.observe(label, { childList: true, characterData: true, subtree: true });
+      }
+
+      function installFetchHook() {
+        const original = window.fetch.bind(window);
+        window.fetch = async (...args) => {
+          const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
+          const isSimulate = /\/api\/simulate/.test(url);
+          if (isSimulate) { local.pending += 1; document.body.classList.add('pending'); document.querySelector('#hero-pending').hidden = false; }
+          if (/\/api\/validate/.test(url)) markStale();
+          let response;
+          try { response = await original(...args); }
+          finally { if (isSimulate) { local.pending -= 1; if (local.pending <= 0) { local.pending = 0; document.body.classList.remove('pending'); document.querySelector('#hero-pending').hidden = true; } } }
+          try {
+            if (response.ok && /\/api\/(state|simulate|events|agent)(\?|$)/.test(url)) {
+              response.clone().json().then(data => {
+                if (url.includes('/api/state')) { local.state = data; mirrorBudget(); renderSlots(); renderHeroDistricts(); }
+                else if (url.includes('/api/events')) { local.events = Array.isArray(data) ? data : []; }
+                else if (url.includes('/api/agent')) { }
+                else { local.lastResult = data; renderResultHero(); comeAlive(data); }
+              }).catch(() => {});
+            }
+          } catch (error) {}
+          return response;
+        };
+      }
+
+      function renderHeroDistricts() {
+        document.querySelectorAll('#hero-districts li').forEach(item => {
+          const district = local.state?.districts?.find(entry => entry.name === item.dataset.district);
+          if (district) item.querySelector('em').textContent = ru(district.base_score);
+        });
+      }
+
+      installFetchHook();
       document.addEventListener('DOMContentLoaded', () => {
-        const root = document.querySelector('main');
+        const main = document.querySelector('main');
+        const navigation = document.querySelector('.topbar nav');
+        const syncPage = () => { document.body.dataset.page = navigation.querySelector('button.active')?.dataset.page || 'city'; };
+        new MutationObserver(syncPage).observe(navigation, { attributes: true, subtree: true, attributeFilter: ['class'] });
+        syncPage();
+        let scheduled = false;
         const enhance = () => {
-          observer.disconnect();
-          document.querySelectorAll('#catalog .measure-grid').forEach((group,index) => {
-            const direction = ['T','E','S','B','C'][index];
-            group.querySelectorAll('.measure').forEach(row => {
-              row.classList.add('measure-row');
-              row.dataset.direction = direction;
-              if (!row.querySelector('.dir-icon')) addIcon(row.querySelector('.check'),direction);
-            });
-          });
-          document.querySelectorAll('.option,.panel,.district').forEach(element => element.classList.add('card'));
-          document.querySelectorAll('.stat').forEach(element => { element.classList.add('tile'); element.querySelector('strong')?.setAttribute('data-countup',''); });
-          document.querySelectorAll('.heatmap td strong').forEach(element => { element.parentElement.dataset.scoreBand = band(Number(element.textContent.replace(' !','').replace(',','.').replace(/\s/g,''))); element.parentElement.style.removeProperty('background-color'); });
-          document.querySelectorAll('#districts .district').forEach(element => {
-            if (element.querySelector('details')) return;
-            const indicators = [...element.querySelectorAll('.indicator')];
-            const values = indicators.map(item => Number(item.querySelector('strong').textContent.replace(' !','').replace(',','.')));
-            const lowest = values.indexOf(Math.min(...values));
-            const summary = document.createElement('p');
-            summary.className = 'district-summary';
-            summary.textContent = 'Слабый показатель: ' + indicators[lowest]?.querySelector('.indicator-head span').textContent + ' · ' + values[lowest].toLocaleString('ru-RU') + '. Критических: ' + values.filter(value => value < 40).length;
-            const details = document.createElement('details');
-            const toggle = document.createElement('summary');
-            toggle.textContent = 'Все показатели';
-            details.append(toggle,...indicators);
-            element.append(summary,details);
-          });
-          const banner = document.querySelector('#event-banner');
-          const selected = document.querySelector('#event-list .selected');
-          banner.hidden = !selected;
-          if (selected) banner.textContent = document.querySelector('#active-event').textContent;
-          document.querySelectorAll('main button').forEach(button => button.classList.add('btn'));
-          observer.observe(root,{childList:true,subtree:true});
+          if (scheduled) return;
+          scheduled = true;
+          setTimeout(() => {
+            scheduled = false;
+            observer.disconnect();
+            enhanceCatalog();
+            enhanceDistricts();
+            enhanceResult();
+            renderSlots();
+            document.querySelectorAll('.option,.panel,.district').forEach(element => element.classList.add('card'));
+            document.querySelectorAll('.stat').forEach(element => element.classList.add('tile'));
+            document.querySelectorAll('main button:not(.btn)').forEach(button => button.classList.add('btn'));
+            observer.observe(main, { childList: true, subtree: true });
+          }, 0);
         };
         const observer = new MutationObserver(enhance);
+        observer.observe(main, { childList: true, subtree: true });
         enhance();
-        fetch('/api/state').then(response => { if (!response.ok) throw new Error('state'); return response.json(); }).then(data => {
-          const update = () => {
-            document.querySelectorAll('#districts .district').forEach(element => {
-              const district = data.districts.find(item => item.name === element.querySelector('h3')?.textContent);
-              if (!district || element.querySelector('.district-score')) return;
-              const score = document.createElement('strong');
-              score.className = 'district-score';
-              score.setAttribute('data-countup','');
-              score.textContent = Number(district.base_score).toLocaleString('ru-RU',{maximumFractionDigits:2});
-              element.append(score);
-            });
-          };
-          update();
-          const districtObserver = new MutationObserver(update);
-          districtObserver.observe(document.querySelector('#districts'),{childList:true});
-        }).catch(() => {});
+        document.addEventListener('change', event => { if (event.target.closest('#catalog')) setTimeout(renderSlots, 0); });
+        document.querySelector('#clear').addEventListener('click', () => setTimeout(renderSlots, 0));
+        watchEvent();
+        new MutationObserver(mirrorBudget).observe(document.querySelector('#budget'), { childList: true, characterData: true, subtree: true });
       });
     })();
   </script>
-  <script src="/v2/skyline.js" defer></script>
   <script src="/app.js" defer></script>
   <script src="/v2/map.js" defer></script>
   <script src="/v2/agent.js" defer></script>
